@@ -69,6 +69,132 @@ const Store = {
   },
 };
 
+
+/* ================= 钓鱼人（半写实坐姿，侧脸朝右） =================
+ * 以脚底为原点 y=0，身高约 78 单位；s 为缩放
+ * mode: idle 等口 / bite 刺鱼瞬间竿被下拉 / fight 搏鱼（剪影由调用方换色）
+ */
+function drawAngler(c, x, y, s, t, mode, silhouette, mirror){
+  c.save(); c.translate(x, y); c.scale(mirror?-s:s, s);
+  const C = silhouette
+    ? { hat:'rgba(18,28,36,0.9)', shirt:'rgba(18,28,36,0.9)', vest:'rgba(18,28,36,0.9)', pants:'rgba(18,28,36,0.9)', boot:'rgba(18,28,36,0.9)', skin:'rgba(18,28,36,0.9)', rod:'#8a9aa4' }
+    : { hat:'#d9b36c', hatDark:'#c39f55', shirt:'#75855a', vest:'#57653f', pants:'#3d4d5e', boot:'#2e3136', skin:'#d8a07a', rod:'#8a6b46' };
+  const lean = mode==='bite' ? 0.10 : 0.05 + Math.sin(t*1.2)*0.015;
+
+  // 凳子
+  c.fillStyle = silhouette ? C.boot : '#6e5638';
+  c.fillRect(-14, -24, 26, 4);
+  c.fillRect(-12, -20, 3, 20); c.fillRect(7, -20, 3, 20);
+
+  // 后腿（远侧，先画）
+  c.strokeStyle = C.pants; c.lineWidth = 8; c.lineCap = 'round';
+  c.beginPath(); c.moveTo(2, -26); c.quadraticCurveTo(16, -22, 18, -10); c.stroke();
+  c.fillStyle = C.boot;
+  c.beginPath(); c.ellipse(19, -4, 8, 3.5, 0, 0, Math.PI*2); c.fill();
+
+  // 躯干（前倾）
+  c.save(); c.translate(2, -26); c.rotate(lean);
+  c.fillStyle = C.shirt;
+  c.beginPath();
+  c.moveTo(-6, 0); c.quadraticCurveTo(-8, -22, -3, -32);
+  c.lineTo(7, -32); c.quadraticCurveTo(8, -12, 7, 0);
+  c.closePath(); c.fill();
+  // 马甲
+  c.fillStyle = C.vest;
+  c.beginPath();
+  c.moveTo(-6, -2); c.quadraticCurveTo(-8, -20, -3, -30);
+  c.lineTo(4, -30); c.quadraticCurveTo(1, -14, 2, -2);
+  c.closePath(); c.fill();
+  // 头（侧脸微低，看漂）
+  c.fillStyle = C.skin;
+  c.beginPath(); c.arc(7, -40, 8, 0, Math.PI*2); c.fill();
+  c.beginPath(); c.ellipse(14.5, -38, 3, 2.2, 0.3, 0, Math.PI*2); c.fill(); // 鼻尖
+  // 草帽
+  c.fillStyle = C.hat;
+  c.beginPath(); c.ellipse(6, -46, 15, 3.4, -0.06, 0, Math.PI*2); c.fill();
+  c.beginPath(); c.ellipse(5, -48.5, 8, 5, 0, Math.PI, 0); c.fill();
+  c.fillStyle = C.hatDark;
+  c.fillRect(-9, -47.2, 30, 1.6);
+  // 后臂（扶竿尾）
+  c.strokeStyle = C.shirt; c.lineWidth = 6;
+  c.beginPath(); c.moveTo(2, -26); c.quadraticCurveTo(14, -18, 26, -16); c.stroke();
+  c.restore();
+
+  // 前腿
+  c.strokeStyle = C.pants; c.lineWidth = 8.5;
+  c.beginPath(); c.moveTo(4, -26); c.quadraticCurveTo(22, -26, 30, -12); c.stroke();
+  c.fillStyle = C.boot;
+  c.beginPath(); c.ellipse(33, -4, 9, 3.8, 0, 0, Math.PI*2); c.fill();
+
+  // 前臂（握竿中部）
+  const shY = -52 + lean*26;
+  c.strokeStyle = C.skin; c.lineWidth = 5.5;
+  c.beginPath(); c.moveTo(10, shY+4); c.quadraticCurveTo(22, shY+10, 30, -18); c.stroke();
+
+  // 鱼竿：以握点为轴，bite 时下拉
+  const rodDrop = mode==='bite' ? 0.35 + Math.sin(t*18)*0.03 : (mode==='fight' ? (drawAngler.fightDrop ?? 0.20) : 0.02 + Math.sin(t*1.5)*0.012);
+  c.save(); c.translate(27, -17); c.rotate(rodDrop);
+  c.strokeStyle = C.rod; c.lineWidth = 3; c.lineCap = 'round';
+  c.beginPath(); c.moveTo(-12, 2);
+  if(mode==='fight'){ c.quadraticCurveTo(55, 18, 105, -52); }  // 搏鱼：竿身向后弯
+  else { c.lineTo(105, -52); }
+  c.stroke();
+  c.strokeStyle = 'rgba(0,0,0,0.25)'; c.lineWidth = 1;
+  c.beginPath(); c.moveTo(-12, 3.5); c.lineTo(105, -50.5); c.stroke();
+  // 导环
+  c.fillStyle = 'rgba(0,0,0,0.3)';
+  for(let i=1;i<=4;i++){ const gx=-6+i*24, gy=1.5-i*9.5; c.beginPath(); c.arc(gx, gy, 1.4, 0, Math.PI*2); c.fill(); }
+  c.restore();
+
+  // 手
+  c.fillStyle = C.skin;
+  c.beginPath(); c.arc(27, -17, 3.4, 0, Math.PI*2); c.fill();
+  c.beginPath(); c.arc(42, -22, 3.2, 0, Math.PI*2); c.fill();
+  c.restore();
+}
+
+/* 湖面场景的岸坡 + 钓鱼人 + 竿线（返回竿稍世界坐标） */
+function drawShoreAngler(c, W, H, t, lake){
+  // 前景岸坡
+  c.beginPath();
+  c.moveTo(0, H*0.66);
+  c.quadraticCurveTo(W*0.10, H*0.72, W*0.24, H*0.86);
+  c.quadraticCurveTo(W*0.30, H*0.94, W*0.30, H);
+  c.lineTo(0, H); c.closePath();
+  const bank = c.createLinearGradient(0, H*0.66, 0, H);
+  bank.addColorStop(0, '#5d7050'); bank.addColorStop(0.4, '#4c5d40'); bank.addColorStop(1, '#3a4a33');
+  c.fillStyle = bank; c.fill();
+  // 草丛
+  c.strokeStyle = '#6d8356'; c.lineWidth = 2; c.lineCap='round';
+  for(let i=0;i<16;i++){
+    const gx = (i/16)*W*0.30 + Math.sin(i*3.7)*8, gy = H*0.70 + (i/16)*H*0.26;
+    const sway = Math.sin(t*1.4+i)*2;
+    c.beginPath(); c.moveTo(gx, gy);
+    c.quadraticCurveTo(gx+sway, gy-9, gx+sway*1.6, gy-15); c.stroke();
+  }
+  // 芦苇
+  c.strokeStyle = '#8ba06a'; c.lineWidth = 2.5;
+  for(let i=0;i<5;i++){
+    const rx = W*0.045+i*14, base = H*0.70 - i*3;
+    const sway = Math.sin(t*0.9+i*1.3)*5;
+    c.beginPath(); c.moveTo(rx, base+40);
+    c.quadraticCurveTo(rx+sway*0.5, base, rx+sway, base-34-i*5); c.stroke();
+    c.fillStyle = '#7d6a44';
+    c.beginPath(); c.ellipse(rx+sway, base-40-i*5, 2.4, 7, sway*0.02, 0, Math.PI*2); c.fill();
+  }
+  // 钓鱼人
+  const ax = W*0.115, ay = H*0.905;
+  const mode = lake.state==='biting' ? 'bite' : 'idle';
+  drawAngler(c, ax, ay, Math.min(W,H)/430*1.15, t, mode, false);
+  // 竿稍坐标（与 drawAngler 内部几何一致：握点(27,-17) rotate(rodDrop) 竿尖(105,-52)）
+  const s = Math.min(W,H)/430*1.15;
+  const rodDrop = mode==='bite' ? 0.35 : 0.02;
+  const hx = ax + 27*s, hy = ay - 17*s;
+  const dx = 105*Math.cos(rodDrop) + 52*Math.sin(rodDrop);
+  const dy = -(105*Math.sin(rodDrop)) + (-52)*Math.cos(rodDrop) + 2*Math.cos(rodDrop);
+  return { tipX: hx + dx*s, tipY: hy + dy*s };
+}
+
 /* ================= 湖面场景 ================= */
 const SPOTS = [
   { id:'shallow', name:'浅滩',   x:.22, y:.52, tip:'小鱼多，偶尔来草鱼' },
@@ -163,6 +289,27 @@ const Lake = {
     c.fillStyle = sky; c.fillRect(0,0,W,H*0.35);
     c.beginPath(); c.arc(W*0.78, H*0.13, 36, 0, Math.PI*2);
     c.fillStyle = 'rgba(255,240,200,0.9)'; c.fill();
+    // 云
+    for(let i=0;i<3;i++){
+      const cx = ((i*0.33+0.08)*W + t*6*(i+1)*0.3) % (W+160) - 80;
+      const cy = H*(0.08+i*0.05);
+      c.fillStyle = 'rgba(255,255,255,0.55)';
+      c.beginPath();
+      c.ellipse(cx, cy, 34, 10, 0, 0, Math.PI*2);
+      c.ellipse(cx+22, cy-5, 22, 9, 0, 0, Math.PI*2);
+      c.ellipse(cx-20, cy-3, 18, 8, 0, 0, Math.PI*2);
+      c.fill();
+    }
+    // 飞鸟
+    c.strokeStyle = 'rgba(60,60,60,0.6)'; c.lineWidth = 1.6; c.lineCap='round';
+    for(let i=0;i<3;i++){
+      const bx2 = ((i*0.4+0.15)*W - t*22*(i%2+1)*0.4) % (W+100);
+      const by2 = H*(0.10+i*0.04) + Math.sin(t*2+i)*4;
+      const flap = Math.sin(t*7+i*2)*3;
+      c.beginPath();
+      c.moveTo(bx2-6, by2-flap); c.quadraticCurveTo(bx2, by2+2, bx2+6, by2-flap);
+      c.stroke();
+    }
     c.beginPath(); c.moveTo(0,H*0.35);
     c.quadraticCurveTo(W*0.25,H*0.22,W*0.5,H*0.35);
     c.quadraticCurveTo(W*0.75,H*0.26,W,H*0.35);
@@ -208,6 +355,19 @@ const Lake = {
       c.beginPath(); c.ellipse(bx, by-dip, 5.5, 9, 0, 0, Math.PI*2);
       c.fillStyle = '#ff5252'; c.fill();
       c.fillStyle='#fff'; c.fillRect(bx-1, by-dip-16, 2, 8);
+    }
+    // 岸坡 + 钓鱼人 + 竿线连到浮漂
+    const tip = drawShoreAngler(c, W, H, t, this);
+    if(this.bobber && this.spot){
+      const s2 = this.spot;
+      const bxx = s2.x*W + Math.sin(t*0.8)*6;
+      let byy = s2.y*H;
+      if(this.state==='biting') byy -= Math.min(18, this.biteT*40);
+      const sag = this.state==='biting' ? 10 : 26 + Math.sin(t*1.1)*3;
+      c.beginPath();
+      c.moveTo(tip.tipX, tip.tipY);
+      c.quadraticCurveTo((tip.tipX+bxx)/2, Math.min(tip.tipY,byy)+sag, bxx, byy-8);
+      c.strokeStyle = 'rgba(255,255,255,0.55)'; c.lineWidth = 1.2; c.stroke();
     }
   },
 };
@@ -423,15 +583,23 @@ const Fight = {
     c.scale(-1,1);
     drawFishArt(c, f.fish.species.id, size, f.t, {silhouette:true});
     c.restore();
+    // 持竿人剪影（右下角，面朝左侧水面，张力越大竿压得越低）
+    const fs = Math.min(W,H)/430*1.9;
+    const fax = W, fay = H + 6;
+    drawAngler.fightDrop = -(0.10 + f.tension/500);
+    drawAngler(c, fax, fay, fs, f.t, 'fight', true, true);
+    // 竿尖世界坐标（镜像：local x 取反；fight 时 rodDrop≈0.55 随张力增加）
+    const rodDrop = drawAngler.fightDrop || 0.20;
+    const cs = Math.cos(rodDrop), sn = Math.sin(rodDrop);
+    const tipLx = 27 + 105*cs + 52*sn;   // 旋转后的竿尖 local x
+    const tipLy = -17 + 105*sn - 52*cs;  // 旋转后的竿尖 local y
+    const tipX = fax - tipLx*fs, tipY = fay + tipLy*fs;
     c.beginPath();
-    c.moveTo(W*0.92, 0);
+    c.moveTo(tipX, tipY);
     const sag = 8 + f.tension*0.9 + Math.sin(f.t*7)*f.tension*0.12;
-    c.quadraticCurveTo((W*0.92+fishX)/2, sag, fishX, yy);
+    c.quadraticCurveTo((tipX+fishX)/2, Math.min(tipY,yy)+sag*0.4, fishX, yy);
     c.strokeStyle = `rgba(255,255,255,${0.35+f.tension/300})`;
     c.lineWidth = 1.5; c.stroke();
-    c.save(); c.translate(W*0.95, -6); c.rotate(-0.5 - f.tension/220);
-    c.strokeStyle = '#c9a06a'; c.lineWidth = 6; c.lineCap='round';
-    c.beginPath(); c.moveTo(0,0); c.quadraticCurveTo(-30,50,-46,110); c.stroke(); c.restore();
     $('#tension-fill').style.width = f.tension+'%';
     $('#tension-fill').style.background = f.tension>90 ? '#ff4040' : f.tension>65 ? '#ff9f40' : 'linear-gradient(90deg,#3ecf72,#e7d84a)';
     $('#stamina-fill').style.width = (f.stamina*100)+'%';
