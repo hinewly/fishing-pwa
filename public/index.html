@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0e2a3a">
+<title>钓鱼·湖畔</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎣</text></svg>">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<!-- ========== 湖面场景 ========== -->
+<div id="screen-lake" class="screen active">
+  <canvas id="lake-canvas"></canvas>
+  <header class="topbar">
+    <h1>🎣 钓鱼·湖畔</h1>
+    <div class="top-actions">
+      <button id="btn-log" class="ghost-btn">📋 渔获</button>
+      <button id="btn-help" class="ghost-btn">?</button>
+    </div>
+  </header>
+  <div id="lake-tip" class="lake-tip">点击湖面选择钓位，然后抛竿</div>
+  <div class="bottom-bar">
+    <button id="btn-cast" class="main-btn" disabled>选择钓位…</button>
+  </div>
+</div>
+
+<!-- ========== 搏鱼场景 ========== -->
+<div id="screen-fight" class="screen">
+  <canvas id="fight-canvas"></canvas>
+  <header class="topbar">
+    <h1 id="fight-title">搏鱼中…</h1>
+  </header>
+  <div class="fight-hud">
+    <div class="meter">
+      <label>鱼线张力</label>
+      <div class="bar"><div id="tension-fill" class="fill"></div><div class="redline"></div></div>
+    </div>
+    <div class="meter">
+      <label>鱼的体力</label>
+      <div class="bar"><div id="stamina-fill" class="fill fish"></div></div>
+    </div>
+    <div id="fight-msg" class="fight-msg"></div>
+  </div>
+  <div class="bottom-bar fight-btns">
+    <button id="btn-reel" class="main-btn reel">按住收线</button>
+    <button id="btn-steady" class="main-btn steady hidden">稳住！</button>
+    <button id="btn-net" class="main-btn net hidden">抄网！</button>
+  </div>
+</div>
+
+<!-- ========== 渔获弹窗 ========== -->
+<div id="popup-catch" class="popup hidden">
+  <div class="popup-card">
+    <div id="catch-new" class="new-badge hidden">🎉 新鱼种！</div>
+    <canvas id="catch-canvas"></canvas>
+    <div class="catch-info">
+      <div id="catch-name" class="catch-name">鲫鱼 <span class="stars"></span></div>
+      <div id="catch-weight" class="catch-weight">0.35 kg</div>
+      <div id="catch-flavor" class="catch-flavor"></div>
+    </div>
+    <button id="btn-catch-ok" class="main-btn">收进鱼护</button>
+  </div>
+</div>
+
+<!-- ========== 跑鱼弹窗 ========== -->
+<div id="popup-lost" class="popup hidden">
+  <div class="popup-card lost">
+    <div id="lost-icon" class="lost-icon">💨</div>
+    <div id="lost-title" class="lost-title">跑鱼了</div>
+    <div id="lost-desc" class="lost-desc"></div>
+    <button id="btn-lost-ok" class="main-btn">继续钓鱼</button>
+  </div>
+</div>
+
+<!-- ========== 渔获清单 ========== -->
+<div id="panel-log" class="popup hidden">
+  <div class="popup-card log">
+    <h2>📋 我的渔获</h2>
+    <div id="log-list" class="log-list"></div>
+    <button id="btn-log-close" class="main-btn">关闭</button>
+  </div>
+</div>
+
+<!-- ========== 帮助 ========== -->
+<div id="panel-help" class="popup hidden">
+  <div class="popup-card log">
+    <h2>怎么玩</h2>
+    <div class="help-body">
+      <p>① 点击湖面选钓位 → 抛竿等浮漂信号</p>
+      <p>② 浮漂<strong>猛地下沉</strong>时，立刻点「刺鱼」按钮（假口乱刺会惊窝！）</p>
+      <p>③ 搏鱼：<strong>按住收线，张力涨太快就松手</strong>。张力顶红线持续 1.5 秒 = 断线</p>
+      <p>④ 大鱼会冲刺、钻底、洗鳃：<br>· 冲刺钻底时千万别硬拉<br>· 洗鳃出现时快速点「稳住」</p>
+      <p>⑤ 鱼拉到岸边后，看准挣扎间隙点「抄网」，抄早了撞网跑鱼！</p>
+      <p>🎮 连了蓝牙手柄的话，按任意键激活：A 按住收线，X 稳住/抄网</p>
+    </div>
+    <button id="btn-help-close" class="main-btn">知道了</button>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="fish-data.js"></script>
+<script src="fish-art.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

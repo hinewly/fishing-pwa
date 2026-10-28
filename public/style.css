@@ -1,0 +1,63 @@
+:root{
+  --bg:#0e2a3a; --panel:#123448; --ink:#eaf3f6; --dim:#9db8c2;
+  --green:#3ecf72; --red:#ff5252; --gold:#ffb02e;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;font-family:"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--ink);user-select:none}
+.screen{position:fixed;inset:0;display:none}
+.screen.active{display:block}
+canvas#lake-canvas,canvas#fight-canvas{position:absolute;inset:0;width:100%;height:100%}
+
+.topbar{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:linear-gradient(rgba(6,20,30,.75),transparent);pointer-events:none}
+.topbar h1{font-size:18px;font-weight:600;letter-spacing:1px}
+.top-actions{display:flex;gap:8px;pointer-events:auto}
+.ghost-btn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:var(--ink);border-radius:10px;padding:6px 12px;font-size:14px;cursor:pointer}
+.ghost-btn:active{background:rgba(255,255,255,.25)}
+
+.lake-tip{position:absolute;top:64px;left:50%;transform:translateX(-50%);background:rgba(6,20,30,.6);padding:6px 14px;border-radius:20px;font-size:13px;color:var(--dim);white-space:nowrap}
+
+.bottom-bar{position:absolute;bottom:0;left:0;right:0;display:flex;justify-content:center;padding:18px;gap:12px}
+.main-btn{border:none;border-radius:14px;padding:16px 34px;font-size:19px;font-weight:600;color:#06222f;background:var(--green);cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.35)}
+.main-btn:disabled{background:#3a5462;color:#7c96a1;box-shadow:none}
+.main-btn:active{transform:translateY(1px)}
+.main-btn.reel{background:var(--gold)}
+.main-btn.steady{background:#ff8f3e}
+.main-btn.net{background:#4fb3ff}
+.fight-btns .main-btn{min-width:150px}
+
+.fight-hud{position:absolute;top:56px;left:16px;right:16px;display:flex;flex-direction:column;gap:8px}
+.meter label{font-size:12px;color:var(--dim)}
+.bar{position:relative;height:16px;background:rgba(0,0,0,.45);border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,.15)}
+.fill{position:absolute;inset:0;width:0%;background:linear-gradient(90deg,#3ecf72,#e7d84a);border-radius:8px;transition:none}
+.fill.fish{background:linear-gradient(90deg,#4fb3ff,#8fd0ff)}
+.redline{position:absolute;right:0;top:0;bottom:0;width:9%;background:rgba(255,60,60,.35);border-left:2px solid rgba(255,80,80,.8)}
+.fight-msg{min-height:20px;font-size:15px;font-weight:600;color:var(--gold);text-shadow:0 1px 3px rgba(0,0,0,.6);text-align:center}
+
+.popup{position:fixed;inset:0;background:rgba(4,14,22,.72);display:flex;align-items:center;justify-content:center;z-index:50}
+.popup.hidden{display:none}
+.popup-card{background:var(--panel);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:22px;width:min(92vw,420px);text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+#catch-canvas{width:100%;height:150px;display:block}
+.catch-name{font-size:24px;font-weight:700}
+.catch-name .stars{color:var(--gold)}
+.catch-weight{font-size:16px;color:var(--dim);margin:4px 0}
+.catch-flavor{font-size:13px;color:var(--dim);min-height:18px}
+.new-badge{background:var(--gold);color:#4d3200;font-weight:700;display:inline-block;padding:4px 14px;border-radius:14px;margin-bottom:8px;animation:pop .4s}
+.popup-card .main-btn{margin-top:16px;width:100%}
+.new-badge.hidden,.hidden{display:none!important}
+
+.lost-icon{font-size:44px}
+.lost-title{font-size:22px;font-weight:700;color:var(--red);margin:6px 0}
+.lost-desc{font-size:14px;color:var(--dim);line-height:1.6}
+
+.popup-card.log h2{font-size:20px;margin-bottom:12px}
+.log-list{max-height:52vh;overflow:auto;text-align:left}
+.log-row{display:flex;align-items:center;gap:10px;padding:9px 6px;border-bottom:1px solid rgba(255,255,255,.08);font-size:16px}
+.log-row .cnt{margin-left:auto;font-weight:700;font-size:18px}
+.log-row.r2 .name{color:#4fb3ff}
+.log-row.r3 .name{color:var(--gold)}
+.log-row.unknown{color:#6f8894}
+.help-body{text-align:left;font-size:14px;line-height:1.9;color:var(--ink)}
+.help-body strong{color:var(--gold)}
+
+.toast{position:fixed;top:20%;left:50%;transform:translateX(-50%);background:rgba(6,20,30,.9);border:1px solid rgba(255,255,255,.2);padding:10px 22px;border-radius:12px;font-size:15px;z-index:60;pointer-events:none}
+.toast.hidden{display:none}

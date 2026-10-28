@@ -1,0 +1,10 @@
+{
+  "name": "钓鱼·湖畔",
+  "short_name": "钓鱼湖畔",
+  "start_url": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#0e2a3a",
+  "theme_color": "#0e2a3a",
+  "icons": []
+}
