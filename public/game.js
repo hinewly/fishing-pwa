@@ -197,9 +197,9 @@ function drawShoreAngler(c, W, H, t, lake){
 
 /* ================= 湖面场景 ================= */
 const SPOTS = [
-  { id:'shallow', name:'浅滩',   x:.22, y:.52, tip:'小鱼多，偶尔来草鱼' },
-  { id:'deep',    name:'深水区', x:.52, y:.42, tip:'大物出没，考验耐心' },
-  { id:'weed',    name:'水草区', x:.80, y:.58, tip:'黑鱼藏身，动作要快' },
+  { id:'shallow', name:'浅滩 ⭐',     diff:1, x:.22, y:.52, tip:'难度⭐ 小鱼多、咬口快，新手练手' },
+  { id:'deep',    name:'深水区 ⭐⭐',  diff:2, x:.52, y:.42, tip:'难度⭐⭐ 进阶，大物出没考验遛鱼' },
+  { id:'weed',    name:'水草区 ⭐⭐⭐', diff:3, x:.80, y:.58, tip:'难度⭐⭐⭐ 挑战，黑鱼猛口大鱼多' },
 ];
 
 const Lake = {
@@ -254,17 +254,20 @@ const Lake = {
         localStorage.setItem('fishing_tut_tai','1');
         toast('口诀：漂尾露5目，假口顿1目别理，吞2目以上/黑漂/送漂马上提竿！', 4200);
       }
-      this.biteAt = rand(4,11);
+      const diff = this.spot.diff||2;
+      this.biteAt = diff===1 ? rand(2.5,6.5) : diff===3 ? rand(5,13) : rand(4,11);
       this.fakes = [];
-      const n = 1+Math.floor(Math.random()*2);
+      const n = diff===1 ? (Math.random()<0.5?0:1) : 1+Math.floor(Math.random()*2);
       for(let i=0;i<n;i++) this.fakes.push(rand(1.5, Math.max(2, this.biteAt-1)));
       this.fakes.sort((a,b)=>a-b);
       $('#btn-cast').textContent = '刺鱼！';
       $('#lake-tip').textContent = '等口……看漂：顿1目是假口，吞2目以上再提！';
     } else {
       this.state='retrieving'; this.retProg=0; this.holding=false;
-      this.hookedFish = rollFish(this.spot.id, 'lure');
-      this.nextAttack = rand(1.5,4);
+      this.hookedFish = rollFish(this.spot, 'lure');
+      const ldiff = this.spot.diff||2;
+      this.nextAttack = ldiff===1 ? rand(1,2.5) : ldiff===3 ? rand(2.5,5) : rand(1.5,4);
+      this.attackWin = ldiff===1 ? 0.7 : ldiff===3 ? 0.45 : 0.55;
       $('#btn-cast').textContent = '按住收线';
       $('#lake-tip').textContent = '按住收线收饵……停顿一下、轻点一下更诱鱼';
     }
@@ -323,12 +326,14 @@ const Lake = {
       }
       if(this.waitTimer >= this.biteAt){
         this.state='biting'; this.biteT=0; this.floatAnimT=0;
-        this.hookedFish = rollFish(this.spot.id, 'tai');
+        this.hookedFish = rollFish(this.spot, 'tai');
         const S = this.hookedFish.strength;
-        this.biteWin = clamp(1.6 - S*0.5, 0.9, 1.6);
-        if(this.biteKind==='song'){ this.floatTarget = -2.5; }          // 送漂
-        else if(S>0.72){ this.floatTarget = 7; }                        // 黑漂
-        else { this.floatTarget = 2.5 + S*2; }                          // 顿口
+        const diff = this.hookedFish.diff||2;
+        const base = diff===1 ? 2.0 : diff===3 ? 1.1 : 1.5;
+        this.biteWin = clamp(base - S*0.4, 0.9, base);
+        if(this.biteKind==='song'){ this.floatTarget = -2.5; }                        // 送漂
+        else if(S > (diff===1 ? 0.9 : 0.72)){ this.floatTarget = 7; }                 // 黑漂（简单级罕见）
+        else { this.floatTarget = 2.5 + S*2; }                                        // 顿口
         AudioSys.bite();
         $('#lake-tip').textContent = this.biteKind==='song' ? '❗ 送漂！往上顶了——快提！' : '❗ 顿口！漂下猛了——快提！';
       }
@@ -432,6 +437,9 @@ const Lake = {
       c.fillStyle = sel?'#ffd250':'rgba(255,255,255,0.75)';
       c.font = '600 14px sans-serif'; c.textAlign='center';
       c.fillText(s.name, sx, sy-30);
+      c.font = '600 11px sans-serif';
+      c.fillStyle = s.diff===1 ? '#7ddf8f' : s.diff===2 ? '#ffd250' : '#ff8a6b';
+      c.fillText(s.diff===1?'简单':s.diff===2?'进阶':'困难', sx, sy-14);
       if(sel){
         for(let i=0;i<3;i++){
           const fx = sx + Math.sin(t*0.7+i*2.1)*46;
@@ -626,10 +634,19 @@ const Fight = {
   start(fish){
     this.F = {
       fish,
+      diff: fish.diff||2,
       tension: 20, progress: 0.12, stamina: 1, t: 0,
+      ripples: [], splashT: 0.5,
       dash:null, nextDash: rand(3,7), snag:null, snagHold:0, wash:null,
       redTime:0, slack:0, fightSec:0, netT:0, _reelT:0, _creakT:0,
     };
+    const D = this.F.diff;
+    this.redLimit  = D===1 ? 2.3 : D===3 ? 1.15 : 1.5;   // 红线容忍时长
+    this.slackLimit= D===1 ? 6.5 : D===3 ? 3.5 : 4.5;    // 低张力容忍时长
+    this.tMul      = D===1 ? 0.78 : D===3 ? 1.15 : 1;    // 张力增速倍率
+    this.pMul      = D===1 ? 1.4  : D===3 ? 0.85 : 1;    // 收线进度倍率
+    this.evMul     = D===1 ? 0.45 : D===3 ? 1.3 : 1;     // 大鱼动作概率倍率
+    this.snagLimit = D===1 ? 1.9 : 1.3;
     this.phase = 'fight'; this.holding = false;
     $('#screen-lake').classList.remove('active');
     $('#screen-fight').classList.add('active');
@@ -699,10 +716,10 @@ const Fight = {
     if(!f.dash && !f.snag && !f.wash && !tired){
       f.nextDash -= dt;
       if(f.nextDash <= 0){
-        if(sp.behaviors.includes('deep') && Math.random()<0.4 && f.progress>0.3){
+        if(sp.behaviors.includes('deep') && Math.random()<0.4*this.evMul && f.progress>0.3){
           f.snag = { left: rand(2,4) };
           $('#fight-msg').textContent = '⚠ 鱼钻底了！松线别硬拉！';
-        } else if(sp.behaviors.includes('wash') && Math.random()<0.45 && f.progress>0.45){
+        } else if(sp.behaviors.includes('wash') && Math.random()<0.45*this.evMul && f.progress>0.45){
           f.wash = { left: 0.7 };
           $('#btn-steady').classList.remove('hidden');
           $('#fight-msg').textContent = '⚡ 鱼要洗鳃——快点「稳住」！';
@@ -740,11 +757,11 @@ const Fight = {
     if(tired) mult *= 0.45;
 
     if(this.holding){
-      let dT = 24 + mult*8;
+      let dT = (24 + mult*8) * this.tMul;
       if(f.snag) dT += 30;
       f.tension += dT*dt;
       f.stamina -= dt*(0.05+0.06*S)*(tired?0.3:1);
-      f.progress += dt*0.14*(0.55+0.45*f.stamina)*(1.25-S*0.75)*(tired?1.7:1);
+      f.progress += dt*0.14*this.pMul*(0.55+0.45*f.stamina)*(1.25-S*0.75)*(tired?1.7:1);
       f._reelT += dt;
       if(f._reelT > 0.09){ f._reelT=0; AudioSys.reel(); }
     } else {
@@ -761,7 +778,7 @@ const Fight = {
       f.redTime += dt;
       f._creakT += dt;
       if(f._creakT > 0.35){ f._creakT=0; AudioSys.creak(); $('#fight-msg').textContent='⚠ 线在响！快松手！'; }
-      if(f.redTime > 1.5){
+      if(f.redTime > this.redLimit){
         AudioSys.snap();
         this.finish(false, '啪——断线了！',
           (f.dash?'大鱼冲刺时你还贪线，':'张力拉满没松手，')+'鱼线崩断，鱼和线组一起没了。张力到红线要立刻松手遛鱼！');
@@ -771,18 +788,27 @@ const Fight = {
 
     if(f.tension < 14 && !f.wash){
       f.slack += dt;
-      if(f.slack > 4.5){
+      if(f.slack > this.slackLimit){
         this.finish(false, '脱钩跑了', '收线太松，鱼钩在鱼嘴里晃荡太久，松脱了。张力要保持在中区，别一直放着不管。');
         return;
       }
     } else { f.slack = Math.max(0, f.slack - dt*0.8); }
 
-    if(f.snag && f.snagHold > 1.3){
+    if(f.snag && f.snagHold > this.snagLimit){
       AudioSys.snap();
       this.finish(false, '挂底断线！', '鱼钻进水底障碍物，你硬拉硬拽，线挂在树根上崩断了。钻底时必须松线，遛它自己出来。');
       return;
     }
 
+    // —— 浪花：体力越少越贴水面翻花，冲刺也炸水 ——
+    const surf = 1 - f.stamina;
+    if(surf>0.3 || f.dash){
+      f.splashT -= dt;
+      if(f.splashT<=0){
+        f.splashT = surf>0.6 ? 0.5 : 0.95;
+        f.ripples.push({ x: rand(-26,26), dy: rand(-14,8), born: f.t, big: surf>0.6||!!f.dash });
+      }
+    }
     if(f.progress >= 1 && this.phase==='fight'){
       this.phase = 'net'; f.netT = 0;
       $('#btn-reel').classList.add('hidden');
@@ -803,16 +829,37 @@ const Fight = {
       c.fillStyle = 'rgba(180,220,230,0.045)';
       c.fillRect(-40,0,80,H); c.restore();
     }
-    const fishY = H*0.52 + Math.sin(f.t*2.2)*30 + (f.dash?Math.sin(f.t*9)*14:0);
+    // 体力越少越贴近水面（画面上部）
+    const surfR = 1 - f.stamina;
+    const fishY = H*(0.52 - 0.26*surfR*surfR) + Math.sin(f.t*2.2)*30 + (f.dash?Math.sin(f.t*9)*14:0);
     const fishX = W*(0.78 - f.progress*0.6) + Math.sin(f.t*3.1)*26*(1+f.fish.strength);
     const yy = f.snag ? Math.min(H*0.86, fishY*1.25) : fishY;
     const size = 60 + f.fish.weight*7 + f.fish.strength*50;
     c.save();
     c.translate(fishX, yy);
-    c.rotate(Math.sin(f.t*2.6)*0.14*(1+f.fish.strength*0.6) + (f.dash?-0.2:0));
+    c.rotate(Math.sin(f.t*2.6)*0.14*(1+f.fish.strength*0.6) + (f.dash?-0.2:0) + (f.stamina<=0 ? Math.sin(f.t*4.5)*0.3 : 0));
     c.scale(-1,1);
     drawFishArt(c, f.fish.species.id, size, f.t, {silhouette:true});
     c.restore();
+    // 浪花圈 + 白沫
+    f.ripples = f.ripples.filter(r => f.t - r.born < 1.1);
+    for(const r of f.ripples){
+      const age = f.t - r.born;
+      const rr = (r.big?10:7) + age*(r.big?110:70);
+      c.beginPath();
+      c.ellipse(fishX + r.x, yy + r.dy - size*0.25, rr, rr*0.3, 0, 0, Math.PI*2);
+      c.strokeStyle = 'rgba(255,255,255,' + (0.55*(1-age/1.1)).toFixed(3) + ')';
+      c.lineWidth = 2; c.stroke();
+    }
+    if(surfR > 0.45 || f.dash){
+      for(let i=0;i<5;i++){
+        const bx3 = fishX + Math.sin(f.t*5+i*2.3)*size*0.4;
+        const by3 = yy - size*0.3 + Math.cos(f.t*4+i)*8;
+        c.beginPath(); c.arc(bx3, by3, 2.2+Math.sin(f.t*8+i)*1.2, 0, Math.PI*2);
+        c.fillStyle = 'rgba(255,255,255,' + (0.3+0.2*Math.sin(f.t*9+i)).toFixed(3) + ')';
+        c.fill();
+      }
+    }
     // 持竿人剪影（右下角，面朝左侧水面，张力越大竿压得越低）
     const fs = Math.min(W,H)/430*1.9;
     const fax = W, fay = H + 6;

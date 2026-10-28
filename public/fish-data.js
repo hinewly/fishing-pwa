@@ -21,21 +21,25 @@ const FISH_SPECIES = [
 
 const RARITY_INFO = { 1:{label:'普通',color:'#9aa5b1',stars:'★'}, 2:{label:'稀有',color:'#4fb3ff',stars:'★★'}, 3:{label:'传说',color:'#ffb02e',stars:'★★★'} };
 
-function rollFish(spotId, mode){
-  const pool = FISH_SPECIES.filter(f=>f.spots.includes(spotId));
-  // 权重：普通 10 / 稀有 3 / 传说 1；路亚模式攻击性鱼种 ×5
+function rollFish(spot, mode){
+  const pool = FISH_SPECIES.filter(f=>f.spots.includes(spot.id));
+  const diff = spot.diff || 2;
+  // 权重：普通 10 / 稀有 3 / 传说 1；路亚攻击鱼 ×5；难度调节稀有度
   const weights = pool.map(f => {
     let w = f.rarity===1?10:(f.rarity===2?3:1);
     if(mode==='lure' && (f.behaviors.includes('dash')||f.behaviors.includes('wash')||f.behaviors.includes('teeth'))) w *= 5;
+    if(diff===1){ w = f.rarity===1?12:(f.rarity===2?1:0); }        // 简单：几乎全小鱼
+    if(diff===3){ if(f.rarity===2) w*=4; if(f.rarity===3) w*=3; }  // 挑战：大物概率大增
     return w;
   });
   let total = weights.reduce((a,b)=>a+b,0), r = Math.random()*total, pick = pool[0];
   for(let i=0;i<pool.length;i++){ r -= weights[i]; if(r<=0){ pick = pool[i]; break; } }
-  // 重量偏小分布：r^2 压向小值
-  const rr = Math.pow(Math.random(),1.8);
+  // 个体重量：难度越低越偏小
+  const rr = Math.pow(Math.random(), diff===1?3.2:diff===3?1.3:1.8);
   const weight = +(pick.wMin + (pick.wMax-pick.wMin)*rr).toFixed(2);
-  // 个体强度：重量占比 70% + 随机 30%
   const wr = (weight - pick.wMin)/(pick.wMax-pick.wMin || 1);
-  const strength = Math.min(1, wr*0.7 + Math.random()*0.3);
-  return { species:pick, weight, strength };
+  let strength = Math.min(1, wr*0.7 + Math.random()*0.3);
+  if(diff===1) strength = Math.min(strength, 0.5);   // 简单：个体都好对付
+  if(diff===3) strength = Math.max(strength, 0.3);   // 挑战：没有白给的
+  return { species:pick, weight, strength, diff };
 }
