@@ -16,11 +16,19 @@
   <header class="topbar">
     <h1>🎣 钓鱼·湖畔</h1>
     <div class="top-actions">
+      <div class="mode-switch">
+        <button id="btn-mode-tai" class="mode-btn active">台钓</button>
+        <button id="btn-mode-lure" class="mode-btn">路亚</button>
+      </div>
       <button id="btn-log" class="ghost-btn">📋 渔获</button>
       <button id="btn-help" class="ghost-btn">?</button>
     </div>
   </header>
   <div id="lake-tip" class="lake-tip">点击湖面选择钓位，然后抛竿</div>
+  <div id="mag" class="hidden">
+    <canvas id="mag-canvas"></canvas>
+    <div id="mag-label">露5目</div>
+  </div>
   <div class="bottom-bar">
     <button id="btn-cast" class="main-btn" disabled>选择钓位…</button>
   </div>
@@ -92,6 +100,8 @@
       <p>② 浮漂<strong>猛地下沉</strong>时，立刻点「刺鱼」按钮（假口乱刺会惊窝！）</p>
       <p>③ 搏鱼：<strong>按住收线，张力涨太快就松手</strong>。张力顶红线持续 1.5 秒 = 断线</p>
       <p>④ 大鱼会冲刺、钻底、洗鳃：<br>· 冲刺钻底时千万别硬拉<br>· 洗鳃出现时快速点「稳住」</p>
+      <p>⑥ 台钓看漂：静止<strong>露5目</strong>，假口只顿1目别理；<strong>吞2目以上（或黑漂/送漂）才能提竿</strong>，提前提=空竿惊窝。左下角放大镜看清楚</p>
+      <p>⑦ 路亚：抛投后<strong>按住收线</strong>，<strong>停顿和轻点</strong>更诱鱼；鱼攻击假饵时画面炸水花，<strong>0.5秒内点「扬竿！」</strong>，晚了就吐饵</p>
       <p>⑤ 鱼拉到岸边后，看准挣扎间隙点「抄网」，抄早了撞网跑鱼！</p>
       <p>🎮 连了蓝牙手柄的话，按任意键激活：A 按住收线，X 稳住/抄网</p>
     </div>

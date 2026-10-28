@@ -21,10 +21,14 @@ const FISH_SPECIES = [
 
 const RARITY_INFO = { 1:{label:'普通',color:'#9aa5b1',stars:'★'}, 2:{label:'稀有',color:'#4fb3ff',stars:'★★'}, 3:{label:'传说',color:'#ffb02e',stars:'★★★'} };
 
-function rollFish(spotId){
+function rollFish(spotId, mode){
   const pool = FISH_SPECIES.filter(f=>f.spots.includes(spotId));
-  // 权重：普通 10 / 稀有 3 / 传说 1，再乘个体重量浮动
-  const weights = pool.map(f => f.rarity===1?10:(f.rarity===2?3:1));
+  // 权重：普通 10 / 稀有 3 / 传说 1；路亚模式攻击性鱼种 ×5
+  const weights = pool.map(f => {
+    let w = f.rarity===1?10:(f.rarity===2?3:1);
+    if(mode==='lure' && (f.behaviors.includes('dash')||f.behaviors.includes('wash')||f.behaviors.includes('teeth'))) w *= 5;
+    return w;
+  });
   let total = weights.reduce((a,b)=>a+b,0), r = Math.random()*total, pick = pool[0];
   for(let i=0;i<pool.length;i++){ r -= weights[i]; if(r<=0){ pick = pool[i]; break; } }
   // 重量偏小分布：r^2 压向小值

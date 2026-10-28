@@ -61,3 +61,16 @@ canvas#lake-canvas,canvas#fight-canvas{position:absolute;inset:0;width:100%;heig
 
 .toast{position:fixed;top:20%;left:50%;transform:translateX(-50%);background:rgba(6,20,30,.9);border:1px solid rgba(255,255,255,.2);padding:10px 22px;border-radius:12px;font-size:15px;z-index:60;pointer-events:none}
 .toast.hidden{display:none}
+
+/* ===== 模式切换 + 漂相放大镜 ===== */
+.mode-switch{display:flex;gap:0;border:1px solid rgba(255,255,255,.3);border-radius:10px;overflow:hidden;margin-right:6px}
+.mode-btn{background:rgba(10,25,35,.6);border:none;color:var(--dim);padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer}
+.mode-btn.active{background:var(--gold);color:#4d3200}
+#mag{position:absolute;left:14px;bottom:96px;background:rgba(6,20,30,.8);border:1px solid rgba(255,255,255,.25);border-radius:14px;padding:8px;text-align:center;z-index:5}
+#mag.hidden{display:none}
+#mag-canvas{width:120px;height:150px;display:block}
+#mag-label{font-size:13px;font-weight:700;color:var(--dim);margin-top:4px;min-height:18px}
+#mag-label.strike{color:var(--gold);animation:blink .4s infinite alternate}
+.main-btn.pulse{animation:pulsebtn .45s infinite alternate}
+@keyframes pulsebtn{from{transform:scale(1)}to{transform:scale(1.1);box-shadow:0 0 22px rgba(255,176,46,.9)}}
+@keyframes blink{from{opacity:.4}to{opacity:1}}

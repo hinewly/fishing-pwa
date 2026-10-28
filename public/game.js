@@ -203,8 +203,13 @@ const SPOTS = [
 ];
 
 const Lake = {
-  canvas:null, ctx:null, spot:null, state:'idle', // idle | waiting | biting
+  canvas:null, ctx:null, spot:null, mode:'tai',
+  state:'idle', // idle | waiting | biting | retrieving | attack
   bobber:null, waitTimer:0, biteAt:0, fakes:[], biteT:0, biteWin:1.2, hookedFish:null,
+  // 漂相（目）：offset>0 下顿 / <0 送漂；静止露5目
+  biteKind:'dun', floatOffset:0, floatTarget:0, floatAnimT:0, fakeT:-1,
+  // 路亚
+  retProg:0, holding:false, nextAttack:0, attackT:0, attackWin:0.55, _reelT:0,
   init(){
     this.canvas = $('#lake-canvas'); this.ctx = this.canvas.getContext('2d');
     this.canvas.addEventListener('pointerdown', e => this.onTap(e));
@@ -229,57 +234,148 @@ const Lake = {
     $('#lake-tip').textContent = `钓位：${s.name} —— ${s.tip}`;
     const b = $('#btn-cast'); b.disabled = false; b.textContent = '🎣 抛竿';
   },
+  setMode(m){
+    if(this.mode===m) return;
+    this.mode = m; this.reset();
+    $('#btn-mode-tai').classList.toggle('active', m==='tai');
+    $('#btn-mode-lure').classList.toggle('active', m==='lure');
+    $('#lake-tip').textContent = m==='tai'
+      ? '台钓：静止露5目，吞2目以上再提竿（左下角放大镜看漂）'
+      : '路亚：抛投后按住收线，停顿+轻点更诱鱼，炸水花马上扬竿！';
+  },
   cast(){
     AudioSys.unlock(); AudioSys.splash();
-    this.state = 'waiting'; this.waitTimer = 0;
     this.bobber = { t:0 };
-    this.biteAt = rand(4,11);
-    this.fakes = [];
-    const n = 1+Math.floor(Math.random()*2);
-    for(let i=0;i<n;i++) this.fakes.push(rand(1.5, Math.max(2, this.biteAt-1)));
-    this.fakes.sort((a,b)=>a-b);
-    $('#btn-cast').textContent = '刺鱼！';
-    $('#lake-tip').textContent = '等口……浮漂动不一定真咬，猛沉再刺！';
+    $('#btn-cast').classList.remove('pulse');
+    if(this.mode==='tai'){
+      this.state='waiting'; this.waitTimer=0;
+      this.floatOffset=0; this.fakeT=-1; this.biteKind = Math.random()<0.25?'song':'dun';
+      this.biteAt = rand(4,11);
+      this.fakes = [];
+      const n = 1+Math.floor(Math.random()*2);
+      for(let i=0;i<n;i++) this.fakes.push(rand(1.5, Math.max(2, this.biteAt-1)));
+      this.fakes.sort((a,b)=>a-b);
+      $('#btn-cast').textContent = '刺鱼！';
+      $('#lake-tip').textContent = '等口……看漂：顿1目是假口，吞2目以上再提！';
+    } else {
+      this.state='retrieving'; this.retProg=0; this.holding=false;
+      this.hookedFish = rollFish(this.spot.id, 'lure');
+      this.nextAttack = rand(1.5,4);
+      $('#btn-cast').textContent = '按住收线';
+      $('#lake-tip').textContent = '按住收线收饵……停顿一下、轻点一下更诱鱼';
+    }
   },
-  strike(){
+  strikeValid(){
+    return this.biteKind==='song' ? this.floatOffset <= -1.8 : this.floatOffset >= 2;
+  },
+  strike(){ // 台钓：waiting 中点 = 提竿（没口就收竿重抛）
     if(this.state!=='waiting') return;
-    const t = this.waitTimer;
-    if(this.fakes.length && Math.abs(t - this.fakes[0]) < 0.5){
+    if(this.fakes.length && Math.abs(this.waitTimer - this.fakes[0]) < 0.5){
       AudioSys.lose();
       this.biteAt += rand(4,9);
       this.fakes = this.fakes.slice(1);
-      toast('空竿惊窝了！鱼群散开，多等一会儿……');
+      toast('空竿惊窝了！那是假口，鱼群散开……');
       return;
     }
     toast('没有口……收竿重抛');
     this.reset();
   },
+  earlyStrike(){ // 台钓：有动作但还没到死口就提
+    AudioSys.lose();
+    const d = Math.round(Math.abs(this.floatOffset)*10)/10;
+    this.biteAt += rand(3,6);
+    this.state='waiting';
+    $('#btn-cast').classList.remove('pulse');
+    toast(`空竿惊窝！才${this.biteKind==='song'?'送':'吞'}${d}目，还没吃死口……`, 2200);
+  },
+  twitch(){ // 路亚轻点抽停
+    this.nextAttack -= rand(0.5,1.1);
+    AudioSys.splash();
+  },
   reset(){
     this.state='idle'; this.bobber=null;
+    this.floatOffset=0; this.fakeT=-1; this.retProg=0; this.holding=false;
+    $('#btn-cast').classList.remove('pulse');
     const b=$('#btn-cast'); b.textContent='🎣 抛竿'; b.disabled=false;
     $('#lake-tip').textContent = this.spot ? `钓位：${this.spot.name} —— 点击湖面可换位` : '点击湖面选择钓位，然后抛竿';
   },
-  update(dt){
-    if(this.state!=='waiting') return;
-    this.waitTimer += dt;
-    if(this.fakes.length && this.waitTimer >= this.fakes[0]){
-      this.fakes.shift(); AudioSys.dip();
-      toast('漂动了一下……可能是假口', 900);
-    }
-    if(this.waitTimer >= this.biteAt){
-      this.state='biting'; this.biteT = 0;
-      this.hookedFish = rollFish(this.spot.id);
-      this.biteWin = clamp(1.5 - this.hookedFish.strength*0.45, 0.8, 1.5);
-      AudioSys.bite();
-      $('#lake-tip').textContent = '❗ 浮漂猛沉——快刺鱼！';
-    }
+  hookupNow(){
+    this.state='idle'; this.bobber=null;
+    $('#btn-cast').classList.remove('pulse');
+    Game.hookup();
   },
-  updateBiting(dt){
-    this.biteT += dt;
-    if(this.biteT > this.biteWin){
-      AudioSys.lose();
-      Game.showLost('吐钩跑了', this.hookedFish.strength>0.6 ? '大鱼试探了两口，你慢了半拍，它吐钩而去。' : '刺慢了，鱼把饵吐了。');
-      this.reset();
+  update(dt){
+    // —— 台钓等口 ——
+    if(this.state==='waiting'){
+      this.waitTimer += dt;
+      if(this.fakes.length && this.waitTimer >= this.fakes[0]){
+        this.fakes.shift(); this.fakeT = 0; AudioSys.dip();
+        toast('漂子顿了一下……像假口', 900);
+      }
+      if(this.fakeT>=0){
+        this.fakeT += dt;
+        this.floatOffset = Math.sin(Math.min(1,this.fakeT/0.5)*Math.PI)*1.3;
+        if(this.fakeT>0.5){ this.fakeT=-1; this.floatOffset=0; }
+      }
+      if(this.waitTimer >= this.biteAt){
+        this.state='biting'; this.biteT=0; this.floatAnimT=0;
+        this.hookedFish = rollFish(this.spot.id, 'tai');
+        const S = this.hookedFish.strength;
+        this.biteWin = clamp(1.6 - S*0.5, 0.9, 1.6);
+        if(this.biteKind==='song'){ this.floatTarget = -2.5; }          // 送漂
+        else if(S>0.72){ this.floatTarget = 7; }                        // 黑漂
+        else { this.floatTarget = 2.5 + S*2; }                          // 顿口
+        AudioSys.bite();
+        $('#lake-tip').textContent = this.biteKind==='song' ? '❗ 送漂！往上顶了——快提！' : '❗ 顿口！漂下猛了——快提！';
+      }
+      return;
+    }
+    // —— 台钓真口窗口 ——
+    if(this.state==='biting'){
+      this.biteT += dt; this.floatAnimT += dt;
+      const pr = Math.min(1, this.floatAnimT/0.4);
+      this.floatOffset = this.floatTarget * (1-Math.pow(1-pr,2));
+      if(this.strikeValid()){ $('#btn-cast').classList.add('pulse'); }
+      if(this.biteT > this.biteWin){
+        AudioSys.lose();
+        $('#btn-cast').classList.remove('pulse');
+        Game.showLost('吐钩跑了', this.hookedFish.strength>0.6 ? '大鱼试探了两口，你慢了半拍，它吐钩而去。' : '提慢了，鱼把饵吐了。到口的瞬间就提，别犹豫。');
+        this.reset();
+      }
+      return;
+    }
+    // —— 路亚收线 ——
+    if(this.state==='retrieving'){
+      if(this.holding){
+        this.retProg += dt*0.20;
+        this.nextAttack -= dt*1.0;
+        this._reelT += dt;
+        if(this._reelT>0.16){ this._reelT=0; AudioSys.reel(); }
+      } else {
+        this.nextAttack -= dt*1.9;   // 停顿更诱鱼
+      }
+      if(this.nextAttack <= 0){
+        this.state='attack'; this.attackT=0;
+        $('#btn-cast').textContent = '扬竿！';
+        $('#btn-cast').classList.add('pulse');
+        $('#lake-tip').textContent = '❗❗ 炸水花了——马上扬竿！';
+        AudioSys.dash(); AudioSys.splash();
+        GamepadFx.buzz(0.9, 350);
+        return;
+      }
+      if(this.retProg >= 1){
+        toast('假饵收回来了，再抛一竿');
+        this.reset();
+      }
+      return;
+    }
+    // —— 路亚攻击窗口 ——
+    if(this.state==='attack'){
+      this.attackT += dt;
+      if(this.attackT > this.attackWin){
+        this.reset();
+        toast('晚了！鱼吐了假饵……下次水花一响马上扬竿', 2400);
+      }
     }
   },
   draw(t){
@@ -289,7 +385,6 @@ const Lake = {
     c.fillStyle = sky; c.fillRect(0,0,W,H*0.35);
     c.beginPath(); c.arc(W*0.78, H*0.13, 36, 0, Math.PI*2);
     c.fillStyle = 'rgba(255,240,200,0.9)'; c.fill();
-    // 云
     for(let i=0;i<3;i++){
       const cx = ((i*0.33+0.08)*W + t*6*(i+1)*0.3) % (W+160) - 80;
       const cy = H*(0.08+i*0.05);
@@ -300,7 +395,6 @@ const Lake = {
       c.ellipse(cx-20, cy-3, 18, 8, 0, 0, Math.PI*2);
       c.fill();
     }
-    // 飞鸟
     c.strokeStyle = 'rgba(60,60,60,0.6)'; c.lineWidth = 1.6; c.lineCap='round';
     for(let i=0;i<3;i++){
       const bx2 = ((i*0.4+0.15)*W - t*22*(i%2+1)*0.4) % (W+100);
@@ -342,32 +436,137 @@ const Lake = {
         }
       }
     }
-    if(this.bobber){
-      const s = this.spot; let by = s.y*H, dip = 0;
-      if(this.state==='waiting'){
-        const nearFake = this.fakes.length && (this.fakes[0]-this.waitTimer)<0.5;
-        if(nearFake) dip = Math.sin(t*14)*3+3;
-      } else if(this.state==='biting'){
-        dip = Math.min(18, this.biteT*40);
+    // —— 台钓：真实立漂（细长分节）——
+    let tip = null;
+    if(this.bobber && this.spot && this.mode==='tai'){
+      const s = this.spot;
+      const bx = s.x*W + Math.sin(t*0.8)*4;
+      const by = s.y*H;
+      const sink = this.floatOffset*2.6;      // 下顿 px（负值=送漂上浮）
+      const fy = by - 14 + sink;
+      // 漂脚（水下）
+      c.strokeStyle = '#3f6a58'; c.lineWidth = 1.6;
+      c.beginPath(); c.moveTo(bx, fy+10); c.lineTo(bx, fy+22); c.stroke();
+      // 漂身
+      c.beginPath(); c.ellipse(bx, fy+6, 3.2, 5.5, 0, 0, Math.PI*2);
+      c.fillStyle = '#e0552f'; c.fill();
+      // 漂尾（红绿相间目）
+      for(let i=0;i<3;i++){
+        c.fillStyle = i%2===0 ? '#e04b3a' : '#e8e4d8';
+        c.fillRect(bx-1.2, fy+2-i*4.5, 2.4, 4);
       }
-      const bx = s.x*W + Math.sin(t*0.8)*6;
-      c.beginPath(); c.ellipse(bx, by, 26, 8, 0, 0, Math.PI*2); c.strokeStyle='rgba(255,255,255,0.35)'; c.stroke();
-      c.beginPath(); c.ellipse(bx, by-dip, 5.5, 9, 0, 0, Math.PI*2);
-      c.fillStyle = '#ff5252'; c.fill();
-      c.fillStyle='#fff'; c.fillRect(bx-1, by-dip-16, 2, 8);
+      // 水纹
+      c.beginPath(); c.ellipse(bx, by, 18, 5, 0, 0, Math.PI*2);
+      c.strokeStyle = 'rgba(255,255,255,0.3)'; c.lineWidth = 1; c.stroke();
+      if(this.state==='biting'){
+        c.beginPath(); c.ellipse(bx, by, 26+this.biteT*30, 8+this.biteT*9, 0, 0, Math.PI*2);
+        c.strokeStyle = 'rgba(255,255,255,0.5)'; c.stroke();
+      }
     }
-    // 岸坡 + 钓鱼人 + 竿线连到浮漂
-    const tip = drawShoreAngler(c, W, H, t, this);
+    // —— 路亚：假饵 + 收线轨迹 ——
+    if(this.bobber && this.spot && this.mode==='lure'){
+      const s = this.spot;
+      const ax = W*0.19, ay = s.y*H + 40;
+      const p = this.state==='attack' ? Math.min(1, this.retProg+0.05) : this.retProg;
+      const lx = s.x*W + (ax - s.x*W)*p;
+      const ly = s.y*H + Math.sin(t*3+p*9)*4;
+      // 收水花尾迹
+      for(let i=1;i<=4;i++){
+        c.beginPath(); c.ellipse(lx + i*9, ly, 7-i, 2.2-i*0.3, 0, 0, Math.PI*2);
+        c.strokeStyle = `rgba(255,255,255,${0.35-i*0.07})`; c.lineWidth = 1; c.stroke();
+      }
+      if(this.state==='attack'){
+        const at = this.attackT;
+        for(let i=0;i<3;i++){
+          c.beginPath(); c.ellipse(lx, ly, 14+at*60+i*12, (14+at*60+i*12)*0.32, 0, 0, Math.PI*2);
+          c.strokeStyle = `rgba(255,255,255,${0.6-at*0.9})`; c.lineWidth = 2; c.stroke();
+        }
+        c.fillStyle = '#ffd250'; c.font = '700 26px sans-serif'; c.textAlign='center';
+        c.fillText('！', lx, ly - 24 - Math.sin(t*10)*3);
+      } else {
+        c.beginPath(); c.ellipse(lx, ly, 4, 2.2, 0, 0, Math.PI*2);
+        c.fillStyle = '#ffd250'; c.fill();
+      }
+    }
+    // —— 岸坡 + 钓鱼人 + 竿线 ——
+    tip = drawShoreAngler(c, W, H, t, this);
     if(this.bobber && this.spot){
-      const s2 = this.spot;
-      const bxx = s2.x*W + Math.sin(t*0.8)*6;
-      let byy = s2.y*H;
-      if(this.state==='biting') byy -= Math.min(18, this.biteT*40);
-      const sag = this.state==='biting' ? 10 : 26 + Math.sin(t*1.1)*3;
+      let ex, ey, sag;
+      if(this.mode==='tai'){
+        ex = this.spot.x*W + Math.sin(t*0.8)*4;
+        ey = this.spot.y*H - 14 + this.floatOffset*2.6;
+        sag = this.state==='biting' ? 8 : 22 + Math.sin(t*1.1)*3;
+      } else {
+        const ax2 = W*0.19;
+        const p = this.state==='attack' ? Math.min(1, this.retProg+0.05) : this.retProg;
+        ex = this.spot.x*W + (ax2 - this.spot.x*W)*p;
+        ey = this.spot.y*H + Math.sin(t*3+p*9)*4 - 2;
+        sag = this.state==='attack' ? 6 : 18;
+      }
       c.beginPath();
       c.moveTo(tip.tipX, tip.tipY);
-      c.quadraticCurveTo((tip.tipX+bxx)/2, Math.min(tip.tipY,byy)+sag, bxx, byy-8);
+      c.quadraticCurveTo((tip.tipX+ex)/2, Math.min(tip.tipY,ey)+sag, ex, ey);
       c.strokeStyle = 'rgba(255,255,255,0.55)'; c.lineWidth = 1.2; c.stroke();
+    }
+    // —— 漂相放大镜 ——
+    const showMag = this.mode==='tai' && this.bobber && (this.state==='waiting'||this.state==='biting');
+    $('#mag').classList.toggle('hidden', !showMag);
+    if(showMag) this.drawMagnifier();
+  },
+  drawMagnifier(){
+    const cv = $('#mag-canvas');
+    const dpr = window.devicePixelRatio||1;
+    const w = 120, h = 150;
+    if(cv.width !== w*dpr){ cv.width = w*dpr; cv.height = h*dpr; }
+    const c = cv.getContext('2d');
+    c.setTransform(dpr,0,0,dpr,0,0);
+    // 水体
+    const g = c.createLinearGradient(0,0,0,h);
+    g.addColorStop(0,'#1b4a5e'); g.addColorStop(1,'#081e2c');
+    c.fillStyle = g; c.fillRect(0,0,w,h);
+    const cx = w/2;
+    const seg = 11, tailTop = 14, restM = 5;
+    // 水线（漂下沉→水面相对上移）
+    const waterY = tailTop + (restM - this.floatOffset)*seg;
+    // 漂脚
+    c.strokeStyle = '#3f6a58'; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(cx, tailTop+7*seg+26); c.lineTo(cx, tailTop+7*seg+48); c.stroke();
+    // 漂身
+    c.beginPath(); c.ellipse(cx, tailTop+7*seg+14, 7, 15, 0, 0, Math.PI*2);
+    c.fillStyle = '#e0552f'; c.fill();
+    c.strokeStyle = 'rgba(0,0,0,0.3)'; c.lineWidth = 1; c.stroke();
+    // 漂尾 7 目（从上往下 1..7，红绿相间）
+    c.font = '700 9px sans-serif'; c.textAlign = 'left';
+    for(let i=0;i<7;i++){
+      const y = tailTop + i*seg;
+      const above = (y+seg/2) < waterY;
+      c.fillStyle = i%2===0 ? (above?'#ff4b3a':'#7a2a22') : (above?'#f2ead2':'#6f6c5e');
+      c.fillRect(cx-2.6, y, 5.2, seg-1);
+      if(above){
+        c.fillStyle = 'rgba(255,255,255,0.85)';
+        c.fillText(String(i+1), cx+8, y+seg-2);
+      }
+    }
+    // 水面线 + 下半透明
+    c.fillStyle = 'rgba(20,60,80,0.55)';
+    c.fillRect(0, waterY, w, h-waterY);
+    c.strokeStyle = 'rgba(255,255,255,0.7)'; c.lineWidth = 1.5;
+    c.beginPath(); c.moveTo(0, waterY); c.lineTo(w, waterY); c.stroke();
+    // 水面微光
+    for(let i=0;i<4;i++){
+      c.beginPath(); c.ellipse(w*0.2+i*28, waterY+6+i*9, 14, 1.4, 0, 0, Math.PI*2);
+      c.fillStyle = 'rgba(255,255,255,0.08)'; c.fill();
+    }
+    // 标签
+    const visible = clamp(Math.round(restM - this.floatOffset), 0, 7);
+    const label = $('#mag-label');
+    if(this.state==='biting' && this.strikeValid()){
+      label.textContent = (this.biteKind==='song'?'送漂！':'顿口！') + ' 提竿！';
+      label.classList.add('strike');
+      $('#btn-cast').classList.add('pulse');
+    } else {
+      label.textContent = '露' + visible + '目';
+      label.classList.remove('strike');
     }
   },
 };
@@ -645,8 +844,12 @@ const GamepadFx = {
       if(!x) this.padX = false;
       if(Fight.F && Fight.F.dash) this.buzz(0.8, 80);
     } else {
-      if(a && !this.padHold){ this.padHold=true; Game.mainAction(); }
-      if(!a) this.padHold=false;
+      if(Lake.mode==='lure' && Lake.state==='retrieving'){
+        if(a !== this.padHold){ this.padHold = a; Lake.holding = a; if(a) AudioSys.unlock(); }
+      } else {
+        if(a && !this.padHold){ this.padHold=true; Game.mainAction(); }
+        if(!a) this.padHold=false;
+      }
     }
   },
 };
@@ -692,20 +895,35 @@ const Game = {
     $('#btn-log-close').addEventListener('click', ()=>hidePopup('#panel-log'));
     $('#btn-help').addEventListener('click', ()=>showPopup('#panel-help'));
     $('#btn-help-close').addEventListener('click', ()=>hidePopup('#panel-help'));
+    $('#btn-mode-tai').addEventListener('click', ()=>Lake.setMode('tai'));
+    $('#btn-mode-lure').addEventListener('click', ()=>Lake.setMode('lure'));
+    // 路亚：主按钮按住收线
+    const castBtn = $('#btn-cast');
+    castBtn.addEventListener('pointerdown', ()=>{
+      if(Game.screen==='lake' && Lake.mode==='lure' && Lake.state==='retrieving'){ Lake.holding = true; }
+    });
+    ['pointerup','pointerleave','pointercancel'].forEach(ev=>
+      castBtn.addEventListener(ev, ()=>{ Lake.holding = false; }));
     if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
     requestAnimationFrame(t=>this.loop(t));
   },
   mainAction(){
     AudioSys.unlock();
-    if(this.screen==='lake'){
-      if(Lake.state==='idle' && Lake.spot){ Lake.cast(); }
-      else if(Lake.state==='waiting'){ Lake.strike(); }
-      else if(Lake.state==='biting'){ this.hookup(); }
+    if(this.screen!=='lake') return;
+    if(Lake.state==='idle'){ if(Lake.spot) Lake.cast(); return; }
+    if(Lake.mode==='tai'){
+      if(Lake.state==='waiting') Lake.strike();
+      else if(Lake.state==='biting'){
+        if(Lake.strikeValid()) Lake.hookupNow();
+        else Lake.earlyStrike();
+      }
+    } else {
+      if(Lake.state==='attack') Lake.hookupNow();
+      else if(Lake.state==='retrieving') Lake.twitch();
     }
   },
   hookup(){
     const fish = Lake.hookedFish;
-    Lake.state='idle'; Lake.bobber=null;
     this.screen='fight';
     Fight.start(fish);
   },
@@ -740,9 +958,8 @@ const Game = {
     this.last = t; this.animT = t/1000;
     GamepadFx.poll();
     if(this.screen==='lake'){
+      Lake.update(dt);
       Lake.draw(this.animT);
-      if(Lake.state==='waiting') Lake.update(dt);
-      if(Lake.state==='biting') Lake.updateBiting(dt);
     } else {
       Fight.update(dt);
     }
