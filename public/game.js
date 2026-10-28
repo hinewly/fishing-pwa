@@ -250,6 +250,10 @@ const Lake = {
     if(this.mode==='tai'){
       this.state='waiting'; this.waitTimer=0;
       this.floatOffset=0; this.fakeT=-1; this.biteKind = Math.random()<0.25?'song':'dun';
+      if(!localStorage.getItem('fishing_tut_tai')){
+        localStorage.setItem('fishing_tut_tai','1');
+        toast('口诀：漂尾露5目，假口顿1目别理，吞2目以上/黑漂/送漂马上提竿！', 4200);
+      }
       this.biteAt = rand(4,11);
       this.fakes = [];
       const n = 1+Math.floor(Math.random()*2);
@@ -442,26 +446,53 @@ const Lake = {
       const s = this.spot;
       const bx = s.x*W + Math.sin(t*0.8)*4;
       const by = s.y*H;
-      const sink = this.floatOffset*2.6;      // 下顿 px（负值=送漂上浮）
-      const fy = by - 14 + sink;
-      // 漂脚（水下）
-      c.strokeStyle = '#3f6a58'; c.lineWidth = 1.6;
-      c.beginPath(); c.moveTo(bx, fy+10); c.lineTo(bx, fy+22); c.stroke();
-      // 漂身
-      c.beginPath(); c.ellipse(bx, fy+6, 3.2, 5.5, 0, 0, Math.PI*2);
-      c.fillStyle = '#e0552f'; c.fill();
-      // 漂尾（红绿相间目）
-      for(let i=0;i<3;i++){
-        c.fillStyle = i%2===0 ? '#e04b3a' : '#e8e4d8';
-        c.fillRect(bx-1.2, fy+2-i*4.5, 2.4, 4);
+      const sink = this.floatOffset*3.2;      // 下顿 px（负值=送漂上浮）
+      const fy = by - 16 + sink;
+      const segH = 7, segW = 5.5, segN = 7;
+      const visibleM = clamp(Math.round(5 - this.floatOffset), 0, 7);
+      // 漂脚（水下，暗）
+      c.strokeStyle = 'rgba(30,60,50,0.75)'; c.lineWidth = 2.2;
+      c.beginPath(); c.moveTo(bx, fy+30); c.lineTo(bx, fy+52); c.stroke();
+      // 漂身（枣核红，带描边）
+      c.beginPath(); c.ellipse(bx, fy+22, 5.5, 10, 0, 0, Math.PI*2);
+      c.fillStyle = '#e0432c'; c.fill();
+      c.strokeStyle = 'rgba(40,10,5,0.55)'; c.lineWidth = 1.2; c.stroke();
+      c.beginPath(); c.ellipse(bx-1.5, fy+19, 2, 5, 0, 0, Math.PI*2);
+      c.fillStyle = 'rgba(255,255,255,0.35)'; c.fill();
+      // 漂尾：7 目红黄相间，水面以上鲜亮、以下变暗
+      for(let i=0;i<segN;i++){
+        const y = fy + 14 - (i+1)*segH;   // 从漂身往上数
+        const above = (7-i) <= visibleM;
+        c.fillStyle = i%2===0
+          ? (above ? '#ff3b30' : 'rgba(90,30,25,0.5)')
+          : (above ? '#ffd250' : 'rgba(100,85,35,0.5)');
+        c.fillRect(bx-segW/2, y, segW, segH-1);
+        c.strokeStyle = 'rgba(30,20,10,0.5)'; c.lineWidth = 0.8;
+        c.strokeRect(bx-segW/2, y, segW, segH-1);
       }
+      // 顶帽
+      c.fillStyle = '#ff3b30';
+      c.fillRect(bx-segW/2-0.6, fy+14-segN*segH-2, segW+1.2, 2.4);
       // 水纹
       c.beginPath(); c.ellipse(bx, by, 18, 5, 0, 0, Math.PI*2);
       c.strokeStyle = 'rgba(255,255,255,0.3)'; c.lineWidth = 1; c.stroke();
       if(this.state==='biting'){
-        c.beginPath(); c.ellipse(bx, by, 26+this.biteT*30, 8+this.biteT*9, 0, 0, Math.PI*2);
-        c.strokeStyle = 'rgba(255,255,255,0.5)'; c.stroke();
+        for(let i=0;i<2;i++){
+          c.beginPath(); c.ellipse(bx, by, 26+this.biteT*26+i*10, 8+this.biteT*8+i*3, 0, 0, Math.PI*2);
+          c.strokeStyle = `rgba(255,255,255,${0.5-i*0.2})`; c.stroke();
+        }
       }
+      // —— 露目小牌 ——
+      const strike = this.state==='biting' && this.strikeValid();
+      const tag = strike ? (this.biteKind==='song'?'送漂！提竿！':'顿口！提竿！') : '露'+visibleM+'目';
+      c.font = '700 13px sans-serif'; c.textAlign = 'center';
+      const tw = c.measureText(tag).width + 14;
+      const ty = fy + 14 - segN*segH - 14;
+      c.fillStyle = strike ? 'rgba(255,80,40,0.92)' : 'rgba(8,22,32,0.78)';
+      c.beginPath(); c.roundRect(bx-tw/2, ty-13, tw, 19, 9); c.fill();
+      if(strike){ c.strokeStyle = '#ffd250'; c.lineWidth = 1.6; c.stroke(); }
+      c.fillStyle = strike ? '#fff' : '#ffd250';
+      c.fillText(tag, bx, ty);
     }
     // —— 路亚：假饵 + 收线轨迹 ——
     if(this.bobber && this.spot && this.mode==='lure'){
