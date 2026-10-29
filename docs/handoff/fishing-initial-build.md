@@ -1,6 +1,6 @@
 # 钓鱼·湖畔 首版构建 交接
 
-- last_updated: 2026-10-29 11:00
+- last_updated: 2026-10-29 11:15
 - status: active
 - version: v0.5.0
 
@@ -27,8 +27,8 @@ v0.1.0 可玩 Demo 本地完成并通过无头浏览器全流程实测（选位�
 - 音效 WebAudio 全合成；PWA（manifest+sw v2 缓存）；localStorage 渔获存档
 
 ## 待办
-- [ ] DNS：A 记录 fishing → 47.108.83.209（阿里云解析，加完 HTTPS 自动签发，curl 验证）
-- [ ] 线上实测全资源 200
+- [x] DNS：A 记录 fishing → 47.108.83.209（aliyun-cli alidns AddDomainRecord，RecordId 2115638554582921216，2026-10-29）——阿里云 AK 原来已配在 ~/.aliyun/config.json（10-27），aliyun-cli 二进制当时下载了没装，本次从 /tmp 缓存包装入 ~/bin/aliyun 3.5.2
+- [x] 线上实测：HTTPS 证书即时签发，全资源 200，game.js=最新（diff:1 浮点分级在），sw v6
 
 - 用户试玩 Demo，调手感（咬口等待/搏鱼节奏/张力手感）
 - 路亚模式（简化版，共用搏鱼系统）
