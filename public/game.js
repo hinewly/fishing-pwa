@@ -278,7 +278,7 @@ const Store = {
 
 
 /* ================= 版本 ================= */
-const APP_VERSION = 'v0.8.0';
+const APP_VERSION = 'v0.9.0';
 
 /* ================= 奖励系统（v0.8.0 用户拍板）
  * 100斤 = 1天注册时长 + 100积分，按充值周期内累计斤数四舍五入到百斤
@@ -1420,9 +1420,11 @@ const Session = {
       showPopup('#popup-daily');
       return false;
     }
+    hidePopup('#popup-gate');
     d.used++;
     d.active = { left: this.DURATION, paused:false, updated: Date.now() };
     DailyLimit.save(d);
+    this.init();
     this._begin();
     return true;
   },
@@ -1645,10 +1647,23 @@ const Game = {
     $('#btn-gate-resume').addEventListener('click', ()=>Session.resumeSaved());
     $('#btn-quit-confirm').addEventListener('click', ()=>{
       hidePopup('#popup-quit-confirm');
-      $('#quit-stats').textContent = Session.todayStats();
-      showPopup('#popup-quit');
+      Session.quitToday();
     });
     $('#btn-quit-cancel').addEventListener('click', ()=>hidePopup('#popup-quit-confirm'));
+    const openQuitConfirm = () => {
+      $('#quit-confirm-info').textContent = `本场会作废。今天还能开 ${DailyLimit.leftSessions()} 场新的。`;
+      showPopup('#popup-quit-confirm');
+    };
+    $('#btn-quit-today').addEventListener('click', openQuitConfirm);
+    $('#btn-quit-from-session').addEventListener('click', openQuitConfirm);
+    $('#btn-quit-back').addEventListener('click', ()=>{
+      hidePopup('#popup-quit');
+      if(DailyLimit.leftSessions() > 0){ Session.start(); toast(`🎣 新一场开始，今天还剩 ${DailyLimit.leftSessions()} 场`); }
+      else {
+        $('#daily-left').textContent = '今天 4 场钓完啦，明天再来～渔获奖励会一直保留。';
+        showPopup('#popup-daily');
+      }
+    });
     $('#btn-quit-close').addEventListener('click', ()=>{
       window.close();
       setTimeout(()=>{ toast('直接关闭这个标签页/App 就行，渔获已保存', 4000); }, 300);

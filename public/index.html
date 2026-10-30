@@ -135,9 +135,11 @@
       <p>顶格后渔获照常累计，<strong>下次充值重新开始</strong>。</p>
       <p><strong>积分不封顶</strong>，全家账户通用（和打卡等积分合并），攒着兑换知识类奖品。</p>
       <h3 style="color:var(--gold);margin:8px 0 2px">⏱ 时间规则</h3>
-      <p>每场30分钟；钓鱼每天最多 <strong>2 小时</strong>（4场），鱼也要休息～</p>
+      <p>每天 <strong>4 场</strong> × 30 分钟；<strong>开场就算一场</strong>，中途退出不退不补；想中途歇口气用「⏸ 暂停」，关掉页面回来可继续本场</p>
+      <p>想收工：⏸ → 「今天不玩了」→ 确认退出，渔获奖励零损失</p>
       <p>🎮 手柄：A 按住收线 / X 稳住·抄网</p>
       <h3 style="color:var(--gold);margin:8px 0 2px">📝 更新记录</h3>
+      <p>· <strong>v0.9.0</strong> 每天4场次制（开场即计）、「今天不玩了」体面退出、暂停跨关闭恢复（继续上一场）、场次用完提示</p>
       <p>· <strong>v0.8.0</strong> 奖励计划上线（100斤=1天+100分）、每日2小时限时、搏鱼时长分档10/15/30秒、小鱼即钓即入护、深水区85%上鱼率、路亚全程站立、顶栏版本号</p>
       <p>· v0.7.7 抄网首次容错+转速放缓；v0.7.6 路亚真实收线模式；v0.7.5 本场计时+暂停+背景音乐；v0.7.3 完整抛竿动画；v0.7.2 鱼类半写实配色重做</p>
     </div>
@@ -162,6 +164,42 @@
     <p style="color:var(--dim);margin-bottom:16px" id="pause-timer-info">剩余时间 30:00</p>
     <button id="btn-resume" class="main-btn">▶ 继续钓鱼</button>
     <button id="btn-end-session" class="main-btn ghost" style="margin-top:10px;background:rgba(255,255,255,.1);color:var(--dim)">🏁 结束本场</button>
+    <button id="btn-quit-today" class="main-btn ghost" style="margin-top:10px;background:rgba(255,255,255,.1);color:var(--dim)">🚪 今天不玩了</button>
+  </div>
+</div>
+
+<!-- ========== 开场门（每日场次） ========== -->
+<div id="popup-gate" class="popup hidden">
+  <div class="popup-card">
+    <div style="font-size:48px;margin-bottom:8px">🎣</div>
+    <h2 style="font-size:22px;margin-bottom:8px">准备开钓</h2>
+    <p id="gate-info" style="color:var(--dim);margin-bottom:16px"></p>
+    <button id="btn-gate-start" class="main-btn">🎣 开始本场</button>
+    <button id="btn-gate-resume" class="main-btn ghost hidden" style="margin-top:10px;background:rgba(255,255,255,.1);color:var(--dim)">⏵ 继续上一场</button>
+  </div>
+</div>
+
+<!-- ========== 退出确认 ========== -->
+<div id="popup-quit-confirm" class="popup hidden">
+  <div class="popup-card">
+    <div style="font-size:48px;margin-bottom:8px">🚪</div>
+    <h2 style="font-size:22px;margin-bottom:8px">今天不玩了？</h2>
+    <p style="color:var(--dim);margin-bottom:6px" id="quit-confirm-info">本场会作废，今天还能开的场次就少一场。</p>
+    <p style="color:var(--gold);margin-bottom:16px;font-size:14px">放心：渔获、天数、积分都是实时保存的，退出零损失。</p>
+    <button id="btn-quit-confirm" class="main-btn">确定退出</button>
+    <button id="btn-quit-cancel" class="main-btn ghost" style="margin-top:10px;background:rgba(255,255,255,.1);color:var(--dim)">我再玩会儿</button>
+  </div>
+</div>
+
+<!-- ========== 告别页 ========== -->
+<div id="popup-quit" class="popup hidden">
+  <div class="popup-card">
+    <div style="font-size:48px;margin-bottom:8px">👋</div>
+    <h2 style="font-size:22px;margin-bottom:8px">今天钓到这里</h2>
+    <p id="quit-stats" style="color:var(--gold);margin-bottom:12px"></p>
+    <p style="color:var(--dim);font-size:14px;margin-bottom:16px">渔获和奖励已全部保存，明天再来～</p>
+    <button id="btn-quit-close" class="main-btn">关闭页面</button>
+    <button id="btn-quit-back" class="main-btn ghost" style="margin-top:10px;background:rgba(255,255,255,.1);color:var(--dim)">↩ 反悔了，继续钓</button>
   </div>
 </div>
 
@@ -183,6 +221,7 @@
     <p id="session-summary" style="color:var(--dim);margin-bottom:12px;line-height:1.6"></p>
     <div id="session-detail" style="text-align:left;font-size:14px;color:var(--dim);margin-bottom:16px;max-height:200px;overflow-y:auto"></div>
     <button id="btn-new-session" class="main-btn">🎣 再钓一场（30分钟）</button>
+    <button id="btn-quit-from-session" class="main-btn ghost" style="margin-top:10px;background:rgba(255,255,255,.1);color:var(--dim)">🚪 今天到这里</button>
   </div>
 </div>
 
