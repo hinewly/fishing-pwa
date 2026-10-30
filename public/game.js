@@ -43,6 +43,74 @@ const AudioSys = (() => {
   };
 })();
 
+/* ================= 背景音乐（WebAudio 合成：湖畔风+水+鸟鸣，零素材） ================= */
+const AmbientMusic = (() => {
+  let ac=null, master=null, playing=false, timerIds=[];
+  function ensureCtx(){
+    if(!ac){
+      ac = new (window.AudioContext||window.webkitAudioContext)();
+      master = ac.createGain(); master.gain.value = 0.14; master.connect(ac.destination);
+    }
+    if(ac.state==='suspended') ac.resume();
+  }
+  // 缓释正弦"风+水"低频层
+  function startDrone(){
+    const drone = ac.createOscillator(), dg = ac.createGain();
+    drone.type='sine'; drone.frequency.value=110; dg.gain.value=0.35;
+    const lfo = ac.createOscillator(), lg = ac.createGain();
+    lfo.frequency.value=0.08; lg.gain.value=0.12;
+    lfo.connect(lg).connect(dg.gain); drone.connect(dg).connect(master);
+    drone.start(); lfo.start();
+    // 高频水声（滤波噪声）
+    const len = ac.sampleRate*4, buf = ac.createBuffer(1,len,ac.sampleRate), d = buf.getChannelData(0);
+    for(let i=0;i<len;i++) d[i]=Math.random()*2-1;
+    const src = ac.createBufferSource(); src.buffer=buf; src.loop=true;
+    const f = ac.createBiquadFilter(); f.type='bandpass'; f.frequency.value=800; f.Q.value=0.4;
+    const ng = ac.createGain(); ng.gain.value=0.06;
+    src.connect(f).connect(ng).connect(master); src.start();
+    timerIds.push(()=>{ try{drone.stop();lfo.stop();src.stop();}catch(e){} });
+  }
+  // 随机鸟鸣：双音小滑音
+  function bird(){
+    if(!playing) return;
+    try{
+      const t0=ac.currentTime, f1=1800+Math.random()*1200;
+      const o=ac.createOscillator(), g=ac.createGain();
+      o.type='sine'; o.frequency.setValueAtTime(f1,t0);
+      o.frequency.exponentialRampToValueAtTime(f1*1.4,t0+0.08);
+      o.frequency.exponentialRampToValueAtTime(f1*0.8,t0+0.16);
+      g.gain.setValueAtTime(0.06,t0); g.gain.exponentialRampToValueAtTime(0.001,t0+0.2);
+      o.connect(g).connect(master); o.start(t0); o.stop(t0+0.25);
+    }catch(e){}
+    setTimeout(bird, 2500+Math.random()*5000);
+  }
+  // 偶发水滴
+  function drip(){
+    if(!playing) return;
+    try{
+      const t0=ac.currentTime, o=ac.createOscillator(), g=ac.createGain();
+      o.type='sine'; o.frequency.setValueAtTime(600+Math.random()*400,t0);
+      o.frequency.exponentialRampToValueAtTime(200,t0+0.12);
+      g.gain.setValueAtTime(0.08,t0); g.gain.exponentialRampToValueAtTime(0.001,t0+0.15);
+      o.connect(g).connect(master); o.start(t0); o.stop(t0+0.2);
+    }catch(e){}
+    setTimeout(drip, 4000+Math.random()*8000);
+  }
+  return {
+    toggle(){
+      if(playing){ this.stop(); return false; }
+      ensureCtx(); playing=true; startDrone(); bird(); drip();
+      return true;
+    },
+    stop(){
+      playing=false;
+      timerIds.forEach(fn=>fn()); timerIds=[];
+      if(ac){ ac.close(); ac=null; master=null; }
+    },
+    get playing(){ return playing; }
+  };
+})();
+
 /* ================= 工具 ================= */
 const $ = s => document.querySelector(s);
 const rand = (a,b) => a + Math.random()*(b-a);
@@ -1097,6 +1165,88 @@ const FLAVOR = {
   heiyu:'伏击猎手，牙口锋利', guiyu:'桃花流水鳜鱼肥', qingyu:'湖中巨物，钓到能吹一年',
 };
 
+/* ================= 本场计时（30分钟/场 + 暂停） ================= */
+const Session = {
+  DURATION: 30*60,   // 30分钟
+  left: 30*60,       // 剩余秒数
+  paused: false,
+  ended: false,
+  timerId: null,
+  startCount: 0,     // 本场渔获条数
+  startTime: 0,      // 本场开始时间戳
+  init(){
+    this.left = this.DURATION; this.paused = false; this.ended = false;
+    this.startCount = 0; this.startTime = Date.now();
+    this.updateUI();
+  },
+  start(){
+    this.init();
+    clearInterval(this.timerId);
+    this.timerId = setInterval(()=>{
+      if(this.paused || this.ended) return;
+      this.left--;
+      this.updateUI();
+      if(this.left <= 0) this.endSession();
+    }, 1000);
+  },
+  pause(){
+    if(this.ended) return;
+    this.paused = true;
+    $('#btn-pause').textContent = '▶';
+    showPopup('#popup-pause');
+    $('#pause-timer-info').textContent = '剩余时间 '+this.format();
+  },
+  resume(){
+    this.paused = false;
+    $('#btn-pause').textContent = '⏸';
+    hidePopup('#popup-pause');
+  },
+  toggleMusic(){
+    const on = AmbientMusic.toggle();
+    $('#btn-music').textContent = on ? '🎵' : '🔇';
+    $('#btn-music').style.opacity = on ? '1' : '0.5';
+  },
+  format(){
+    const m = Math.floor(this.left/60), sec = this.left%60;
+    return String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
+  },
+  updateUI(){
+    const el = $('#session-timer');
+    el.textContent = this.format();
+    el.classList.toggle('warning', this.left <= 300 && this.left > 0);
+  },
+  endSession(){
+    if(this.ended) return;
+    this.ended = true;
+    clearInterval(this.timerId);
+    // 如果正在钓鱼，先收竿
+    if(Lake.state!=='idle'){ Lake.reelIn && Lake.reelIn(); Lake.state='idle'; Lake.bobber=null; }
+    // 统计本场（用开始时间戳过滤记录）
+    const d = Store.load();
+    const recs = (d.records||[]).filter(r=>r.t >= this.startTime);
+    const totalJin = recs.reduce((a,r)=>a+r.w*2,0);
+    $('#session-summary').textContent = `本场共钓到 ${recs.length} 条鱼，合计 ${totalJin.toFixed(1)} 斤`;
+    // 本场鱼种明细
+    const bySpecies = {};
+    recs.forEach(r=>{ bySpecies[r.s] = bySpecies[r.s] || {n:0,jin:0}; bySpecies[r.s].n++; bySpecies[r.s].jin+=r.w*2; });
+    const detailEl = $('#session-detail');
+    if(Object.keys(bySpecies).length === 0){
+      detailEl.innerHTML = '<p style="text-align:center;color:var(--dim)">本场没有钓到鱼，再接再厉！</p>';
+    } else {
+      detailEl.innerHTML = Object.entries(bySpecies).map(([sid,v])=>{
+        const sp = FISH_DATA.find(f=>f.id===sid);
+        return `<p>· ${sp?sp.name:sid} ×${v.n}（${v.jin.toFixed(1)} 斤）</p>`;
+      }).join('');
+    }
+    showPopup('#popup-session');
+  },
+  newSession(){
+    hidePopup('#popup-session');
+    this.start();
+    toast('🎣 新一场开始，限时30分钟');
+  }
+};
+
 const Game = {
   screen:'lake',
   last:0, animT:0, catchRaf:null,
@@ -1111,6 +1261,20 @@ const Game = {
     $('#btn-help-close').addEventListener('click', ()=>hidePopup('#panel-help'));
     $('#btn-mode-tai').addEventListener('click', ()=>Lake.setMode('tai'));
     $('#btn-mode-lure').addEventListener('click', ()=>Lake.setMode('lure'));
+    // v0.7.5 计时/暂停/音乐
+    $('#btn-pause').addEventListener('click', ()=>{
+      if(Session.ended) return;
+      Session.paused ? Session.resume() : Session.pause();
+    });
+    $('#btn-resume').addEventListener('click', ()=>Session.resume());
+    $('#btn-end-session').addEventListener('click', ()=>{
+      hidePopup('#popup-pause'); Session.resume(); Session.endSession();
+    });
+    $('#btn-new-session').addEventListener('click', ()=>Session.newSession());
+    $('#btn-music').addEventListener('click', ()=>{
+      AudioSys.unlock(); Session.toggleMusic();
+    });
+    Session.start();
     // 路亚：主按钮按住收线
     const castBtn = $('#btn-cast');
     castBtn.addEventListener('pointerdown', ()=>{
@@ -1163,6 +1327,7 @@ const Game = {
   onCaught(fish){
     this.screen='lake';
     const isNew = Store.add(fish);
+    Session.startCount++;
     AudioSys.win();
     $('#catch-new').classList.toggle('hidden', !isNew);
     $('#catch-name').innerHTML = fish.species.name+' <span class="stars">'+RARITY_INFO[fish.species.rarity].stars+'</span>';
@@ -1188,8 +1353,8 @@ const Game = {
     showPopup('#popup-lost');
   },
   loop(t){
-    const dt = Math.min(0.05, (t-this.last)/1000 || 0.016);
-    this.last = t; this.animT = t/1000;
+    const dt = Session.paused ? 0 : Math.min(0.05, (t-this.last)/1000 || 0.016);
+    this.last = t; this.animT = Session.paused ? this.animT : t/1000;
     GamepadFx.poll();
     if(this.screen==='lake'){
       Lake.update(dt);

@@ -24,7 +24,10 @@
         <button id="btn-mode-tai" class="mode-btn active">台钓</button>
         <button id="btn-mode-lure" class="mode-btn">路亚</button>
       </div>
+      <span id="session-timer" class="session-timer">30:00</span>
       <button id="btn-log" class="ghost-btn">📋 渔获</button>
+      <button id="btn-music" class="ghost-btn" title="背景音乐">🎵</button>
+      <button id="btn-pause" class="ghost-btn" title="暂停">⏸</button>
       <button id="btn-refresh" class="ghost-btn" title="刷新获取最新版本">🔄</button>
       <button id="btn-help" class="ghost-btn">?</button>
     </div>
@@ -112,6 +115,28 @@
       <p>🎮 连了蓝牙手柄的话，按任意键激活：A 按住收线，X 稳住/抄网</p>
     </div>
     <button id="btn-help-close" class="main-btn">知道了</button>
+  </div>
+</div>
+
+<!-- ========== 暂停弹窗 ========== -->
+<div id="popup-pause" class="popup hidden">
+  <div class="popup-card">
+    <div style="font-size:48px;margin-bottom:8px">⏸</div>
+    <h2 style="font-size:22px;margin-bottom:8px">已暂停</h2>
+    <p style="color:var(--dim);margin-bottom:16px" id="pause-timer-info">剩余时间 30:00</p>
+    <button id="btn-resume" class="main-btn">▶ 继续钓鱼</button>
+    <button id="btn-end-session" class="main-btn ghost" style="margin-top:10px;background:rgba(255,255,255,.1);color:var(--dim)">🏁 结束本场</button>
+  </div>
+</div>
+
+<!-- ========== 本场结束弹窗 ========== -->
+<div id="popup-session" class="popup hidden">
+  <div class="popup-card">
+    <div style="font-size:48px;margin-bottom:8px">🏁</div>
+    <h2 style="font-size:22px;margin-bottom:4px">本场结束</h2>
+    <p id="session-summary" style="color:var(--dim);margin-bottom:12px;line-height:1.6"></p>
+    <div id="session-detail" style="text-align:left;font-size:14px;color:var(--dim);margin-bottom:16px;max-height:200px;overflow-y:auto"></div>
+    <button id="btn-new-session" class="main-btn">🎣 再钓一场（30分钟）</button>
   </div>
 </div>
 
