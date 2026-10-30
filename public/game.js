@@ -491,22 +491,24 @@ const Lake = {
       c.fill();
       c.strokeStyle = sel ? 'rgba(255,210,80,0.9)' : 'rgba(255,255,255,0.35)';
       c.lineWidth = sel?2.5:1.5; c.setLineDash(sel?[]:[6,6]); c.stroke(); c.setLineDash([]);
-      // v0.7.1 名牌：胶囊底 + 名字 + 星标
+      // v0.7.4 名牌：胶囊底 + 名字 + 星标，放钓点侧边不挡漂/线
       c.font = '700 14px sans-serif'; c.textAlign='center';
       const nw = Math.max(c.measureText(s.name).width, 56) + 22;
+      const side = sx < W*0.5 ? 1 : -1;
+      const px = sx + side*(52 + 12 + nw/2);
       c.fillStyle = sel ? 'rgba(14,34,46,0.88)' : 'rgba(8,22,32,0.55)';
-      c.beginPath(); c.roundRect(sx-nw/2, sy+28, nw, 48, 12); c.fill();
+      c.beginPath(); c.roundRect(px-nw/2, sy-24, nw, 48, 12); c.fill();
       c.strokeStyle = sel ? '#ffd250' : 'rgba(255,255,255,0.35)';
       c.lineWidth = sel ? 2 : 1; c.stroke();
       c.fillStyle = sel ? '#ffd250' : 'rgba(255,255,255,0.88)';
-      c.fillText(s.name, sx, sy+48);
+      c.fillText(s.name, px, sy-4);
       c.font = '600 13px sans-serif';
       c.fillStyle = '#ffd250';
-      c.fillText('★'.repeat(s.stars), sx, sy+66);
+      c.fillText('★'.repeat(s.stars), px, sy+14);
       if(sel){
         for(let i=0;i<3;i++){
           const fx = sx + Math.sin(t*0.7+i*2.1)*46;
-          c.beginPath(); c.ellipse(fx, sy+82+i*10, 14-i*2, 5, Math.sin(t+i)*0.2, 0, Math.PI*2);
+          c.beginPath(); c.ellipse(fx, sy+30+i*10, 14-i*2, 5, Math.sin(t+i)*0.2, 0, Math.PI*2);
           c.fillStyle = 'rgba(20,30,36,0.35)'; c.fill();
         }
       }
