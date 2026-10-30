@@ -220,7 +220,7 @@ function renderCatchCanvas(canvas, id, t, weight = 0){
   ctx.clearRect(0,0,w,h);
   ctx.save();
   ctx.translate(w*0.52, h*0.55);
-  const len = Math.max(90, Math.min(90 + weight*34, w*0.82, 420));   // v0.7.0 按实际重量缩放
+  const len = Math.max(90, Math.min(90 + weight*34, w*0.5, 280));   // v0.7.1 封顶：比小鱼明显大但不占满
   ctx.rotate(Math.sin(t*1.2)*0.02);
   drawFishArt(ctx, id, len, t);
   ctx.restore();

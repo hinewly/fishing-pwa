@@ -199,9 +199,9 @@ function drawShoreAngler(c, W, H, t, lake){
 
 /* ================= 湖面场景 ================= */
 const SPOTS = [
-  { id:'shallow', name:'浅滩',   diff:1, x:.22, y:.52, tip:'小鱼池：全是2斤内的小鱼，咬口快，提竿就上' },
-  { id:'deep',    name:'深水区', diff:2, x:.52, y:.42, tip:'大鱼池：3斤起步能上十几斤，中鱼后要遛鱼' },
-  { id:'weed',    name:'水草区', diff:3, x:.80, y:.58, tip:'巨物池：4斤+猛鱼出没跑鱼率高，考验技术' },
+  { id:'shallow', name:'浅滩',   diff:1, stars:1, x:.22, y:.52, tip:'小鱼池：全是2斤内的小鱼，提竿就上' },
+  { id:'weed',    name:'水草区', diff:2, stars:2, x:.80, y:.58, tip:'猛鱼池：3斤+黑鱼鳜鱼出没，得会遛鱼' },
+  { id:'deep',    name:'深水区', diff:3, stars:3, x:.52, y:.42, tip:'巨物池：4斤起步能上几十斤，最考验遛鱼' },
 ];
 
 const Lake = {
@@ -436,9 +436,18 @@ const Lake = {
       c.fill();
       c.strokeStyle = sel ? 'rgba(255,210,80,0.9)' : 'rgba(255,255,255,0.35)';
       c.lineWidth = sel?2.5:1.5; c.setLineDash(sel?[]:[6,6]); c.stroke(); c.setLineDash([]);
-      c.fillStyle = sel?'#ffd250':'rgba(255,255,255,0.75)';
-      c.font = '600 14px sans-serif'; c.textAlign='center';
-      c.fillText(s.name, sx, sy-22);
+      // v0.7.1 名牌：胶囊底 + 名字 + 星标
+      c.font = '700 14px sans-serif'; c.textAlign='center';
+      const nw = Math.max(c.measureText(s.name).width, 56) + 22;
+      c.fillStyle = sel ? 'rgba(14,34,46,0.88)' : 'rgba(8,22,32,0.55)';
+      c.beginPath(); c.roundRect(sx-nw/2, sy-56, nw, 48, 12); c.fill();
+      c.strokeStyle = sel ? '#ffd250' : 'rgba(255,255,255,0.35)';
+      c.lineWidth = sel ? 2 : 1; c.stroke();
+      c.fillStyle = sel ? '#ffd250' : 'rgba(255,255,255,0.88)';
+      c.fillText(s.name, sx, sy-36);
+      c.font = '600 13px sans-serif';
+      c.fillStyle = '#ffd250';
+      c.fillText('★'.repeat(s.stars), sx, sy-16);
       if(sel){
         for(let i=0;i<3;i++){
           const fx = sx + Math.sin(t*0.7+i*2.1)*46;
@@ -710,6 +719,8 @@ const Fight = {
     f.t += dt; f.fightSec += dt;
     const sp = f.fish.species, S = f.fish.strength;
     const tired = f.stamina <= 0;
+    // v0.7.1 遛鱼30秒封顶：超时鱼必力竭加速上岸，不让玩家耗着
+    if(f.fightSec > 26){ f.stamina = 0; f.progress += dt*0.35; }
 
     if(this.phase==='net'){
       f.netT += dt;
@@ -768,8 +779,8 @@ const Fight = {
       let dT = (20 + mult*8) * this.tMul;
       if(f.snag) dT += 20;
       f.tension += dT*dt;
-      f.stamina -= dt*(0.065+0.07*S)*(tired?0.3:1);
-      f.progress += dt*0.155*this.pMul*(0.55+0.45*f.stamina)*(1.25-S*0.55)*(tired?1.7:1);
+      f.stamina -= dt*(0.08+0.08*S)*(tired?0.3:1);
+      f.progress += dt*0.19*this.pMul*(0.55+0.45*f.stamina)*(1.25-S*0.55)*(tired?1.7:1);
       f._reelT += dt;
       if(f._reelT > 0.09){ f._reelT=0; AudioSys.reel(); }
     } else {
@@ -831,6 +842,7 @@ const Fight = {
   render(){
     const c = this.ctx, W = innerWidth, H = innerHeight, f = this.F;
     if(!f) return;
+    const S = f.fish.strength;   // v0.7.1 挣扎摆动需要
     const g = c.createLinearGradient(0,0,0,H);
     g.addColorStop(0,'#1b4a5e'); g.addColorStop(1,'#081e2c');
     c.fillStyle = g; c.fillRect(0,0,W,H);
@@ -842,12 +854,14 @@ const Fight = {
     // 体力越少越贴近水面（画面上部）
     const surfR = 1 - f.stamina;
     const fishY = H*(0.52 - 0.26*surfR*surfR) + Math.sin(f.t*2.2)*30 + (f.dash?Math.sin(f.t*9)*14:0);
-    const fishX = W*(0.78 - f.progress*0.6) + Math.sin(f.t*3.1)*26*(1+f.fish.strength);
+    // v0.7.1 挣扎：鱼在水下左右冲拉，体力越足摆得越猛
+    const struggle = Math.sin(f.t*(1.6+S*1.4)) * (24+42*S) * (f.stamina<=0?0.35:1);
+    const fishX = W*(0.78 - f.progress*0.6) + Math.sin(f.t*3.1)*26*(1+S) + struggle;
     const yy = f.snag ? Math.min(H*0.86, fishY*1.25) : fishY;
-    const size = Math.min(46 + f.fish.weight*20, W*0.55, H*0.45);   // v0.7.0 2斤小鱼 vs 20斤巨物体型差6倍
+    const size = Math.min(46 + f.fish.weight*20, W*0.38, H*0.30);   // v0.7.1 封顶：大而不吓人
     c.save();
     c.translate(fishX, yy);
-    c.rotate(Math.sin(f.t*2.6)*0.14*(1+f.fish.strength*0.6) + (f.dash?-0.2:0) + (f.stamina<=0 ? Math.sin(f.t*4.5)*0.3 : 0));
+    c.rotate(Math.sin(f.t*(2.2+S))*0.22*(1+S*0.6) + (f.dash?-0.2:0) + (f.stamina<=0 ? Math.sin(f.t*4.5)*0.3 : 0));
     c.scale(-1,1);
     drawFishArt(c, f.fish.species.id, size, f.t, {underwater:true});
     c.restore();
@@ -873,7 +887,10 @@ const Fight = {
     // 持竿人剪影（右下角，面朝左侧水面，张力越大竿压得越低）
     const fs = Math.min(W,H)/430*1.9;
     const fax = W, fay = H + 6;
-    drawAngler.fightDrop = -(0.10 + f.tension/500);
+    // v0.7.1 竿随鱼摆：鱼左右冲拉+深浅变化带动竿尖俯仰
+    const rodSway = Math.sin(f.t*(1.6+S*1.4)) * (0.05+0.09*S) * (f.stamina<=0?0.35:1);
+    const depthPull = clamp((yy - H*0.45)/H, -0.2, 0.4);
+    drawAngler.fightDrop = -(0.10 + f.tension/500) + rodSway*0.6 + depthPull*0.3 + (f.dash?0.06:0);
     drawAngler(c, fax, fay, fs, f.t, 'fight', true, true);
     // 竿尖世界坐标（镜像：local x 取反；fight 时 rodDrop≈0.55 随张力增加）
     const rodDrop = drawAngler.fightDrop || 0.20;
