@@ -43,49 +43,115 @@ const AudioSys = (() => {
   };
 })();
 
-/* ================= 背景轻音乐（音乐盒音色·固定旋律·明亮欢快） ================= */
+/* ================= 背景轻音乐（3种风格可选·WebAudio合成·零素材） ================= */
 const AmbientMusic = (() => {
   let ac=null, master=null, playing=false, loopTimer=null;
-  // C大调五声音阶频率表
-  const N = {
-    C4:261.63, D4:293.66, E4:329.63, G4:392.00, A4:440.00,
-    C5:523.25, D5:587.33, E5:659.25, G5:784.00, A5:880.00, C6:1046.5,
+  let trackIdx = parseInt(localStorage.getItem('fishing_music_track')||'0')||0;
+
+  // —— 音符频率表 ——
+  const F = {
+    // C大调（八音盒）
     C3:130.81, F3:174.61, G3:196.00, A3:220.00,
+    C4:261.63, D4:293.66, E4:329.63, G4:392.00, A4:440.00,
+    C5:523.25, D5:587.33, E5:659.25, G5:784.00,
+    // D大调（古筝）
+    D4g:293.66, E4g:329.63, Fs4:369.99, A4g:440.00, B4g:493.88,
+    D5g:587.33, E5g:659.25, Fs5:739.99, A5g:880.00, B5g:987.77,
+    D3g:146.83, B3g:246.94, G3g:196.00,
+    // G大调（口哨）
+    G4w:392.00, A4w:440.00, B4w:493.88, D5w:587.33, E5w:659.25, G5w:784.00, A5w:880.00, B5w:987.77, D6w:1174.7,
+    G3w:196.00, C4w:261.63, E4w:329.63, D4w:293.66,
   };
-  // 旋律：[拍位, 音符, 时值(拍), 音量]  4/4拍，72BPM
-  // 像八音盒/卡林巴的欢快小调，C大调五声，明亮不沉闷
-  const MELODY = [
-    // 第一句（上扬的问候）
-    [0,  N.E4, 1, .12], [1, N.G4, 1, .12], [2, N.A4, 1.5, .13], [3.5, N.G4, .5, .10],
-    [4,  N.E4, 1, .11], [5, N.D4, 1, .11], [6, N.C4, 2, .12],
-    // 第二句（轻盈的回应）
-    [8,  N.D4, 1, .10], [9, N.E4, 1, .11], [10, N.G4, 1.5, .13], [11.5, N.E4, .5, .10],
-    [12, N.D4, 1, .10], [13, N.C4, 1, .11], [14, N.A3, 2, .12],
-    // 第三句（跳跃到高音区，明亮！）
-    [16, N.E4, 1, .11], [17, N.G4, 1, .12], [18, N.A4, 1, .12], [19, N.C5, 1, .14],
-    [20, N.A4, 1, .12], [21, N.G4, 1, .12], [22, N.E4, 2, .11],
-    // 第四句（温柔收尾+小回音）
-    [24, N.G4, 1, .11], [25, N.E4, 1, .10], [26, N.D4, 1, .10], [27, N.C4, 1, .11],
-    [28, N.C5, .5, .09], [28.5, N.A4, .5, .09], [29, N.G4, .5, .09], [29.5, N.E4, .5, .08],
-    [30, N.C4, 2, .12],
+
+  // —— 三种曲目的完整编曲 ——
+  const TRACKS = [
+  {
+    name:'🎵 八音盒', icon:'🎵', bpm:72, total:32,
+    // [拍位, 频率, 时值拍, 音量]
+    melody: [
+      [0,  F.E4, 1, .12], [1, F.G4, 1, .12], [2, F.A4, 1.5, .13], [3.5, F.G4, .5, .10],
+      [4,  F.E4, 1, .11], [5, F.D4, 1, .11], [6, F.C4, 2, .12],
+      [8,  F.D4, 1, .10], [9, F.E4, 1, .11], [10, F.G4, 1.5, .13], [11.5, F.E4, .5, .10],
+      [12, F.D4, 1, .10], [13, F.C4, 1, .11], [14, F.A3, 2, .12],
+      [16, F.E4, 1, .11], [17, F.G4, 1, .12], [18, F.A4, 1, .12], [19, F.C5, 1, .14],
+      [20, F.A4, 1, .12], [21, F.G4, 1, .12], [22, F.E4, 2, .11],
+      [24, F.G4, 1, .11], [25, F.E4, 1, .10], [26, F.D4, 1, .10], [27, F.C4, 1, .11],
+      [28, F.C5, .5, .09], [28.5, F.A4, .5, .09], [29, F.G4, .5, .09], [29.5, F.E4, .5, .08],
+      [30, F.C4, 2, .12],
+    ],
+    bass: [
+      [0,F.C3],[4,F.A3],[8,F.F3],[12,F.G3],
+      [16,F.C3],[20,F.A3],[24,F.F3],[28,F.G3],
+    ],
+    arp: [
+      [.5,F.G4],[1.5,F.E4],[2.5,F.G4],[3.5,F.E4],
+      [4.5,F.G4],[5.5,F.E4],[6.5,F.G4],[7.5,F.E4],
+      [8.5,F.A4],[9.5,F.E4],[10.5,F.A4],[11.5,F.E4],
+      [12.5,F.A4],[13.5,F.C4],[14.5,F.A4],[15.5,F.C4],
+      [16.5,F.G4],[17.5,F.E4],[18.5,F.G4],[19.5,F.C5],
+      [20.5,F.G4],[21.5,F.E4],[22.5,F.G4],[23.5,F.E4],
+      [24.5,F.A4],[25.5,F.E4],[26.5,F.D4],[27.5,F.E4],
+      [28.5,F.G4],[29.5,F.E4],[30.5,F.G4],[31.5,F.E4],
+    ],
+  },
+  {
+    name:'🍃 古筝', icon:'🍃', bpm:60, total:32,
+    // D大调五声（D E F# A B），慢速优雅
+    melody: [
+      [0,  F.D5g, 1, .10], [1, F.E5g, 1, .10], [2, F.Fs5, 2, .12],
+      [4,  F.A5g, 1, .11], [5, F.Fs5, 1, .10], [6, F.E5g, 2, .11],
+      [8,  F.Fs5, 1, .10], [9, F.E5g, 1, .10], [10, F.D5g, 1, .11], [11, F.E5g, 1, .10],
+      [12, F.Fs5, 1, .11], [13, F.A5g, 1, .12], [14, F.B5g, 2, .13],
+      [16, F.B5g, 1, .11], [17, F.A5g, 1, .11], [18, F.Fs5, 1, .10], [19, F.E5g, 1, .10],
+      [20, F.D5g, 2, .12],
+      [24, F.E5g, 1, .10], [25, F.Fs5, 1, .11], [26, F.E5g, 1, .10], [27, F.D5g, 1, .10],
+      [28, F.B4g, 1, .09], [29, F.A4g, 1, .10], [30, F.D5g, 2, .12],
+    ],
+    bass: [
+      [0,F.D3g],[4,F.B3g],[8,F.G3g],[12,F.A4g],
+      [16,F.D3g],[20,F.B3g],[24,F.G3g],[28,F.A4g],
+    ],
+    arp: [
+      [.5,F.A4g],[1.5,F.Fs5],[2.5,F.A4g],[3.5,F.Fs5],
+      [4.5,F.A4g],[5.5,F.D5g],[6.5,F.A4g],[7.5,F.Fs5],
+      [8.5,F.B4g],[9.5,F.Fs5],[10.5,F.B4g],[11.5,F.Fs5],
+      [12.5,F.B4g],[13.5,F.E5g],[14.5,F.B4g],[15.5,F.E5g],
+      [16.5,F.A4g],[17.5,F.Fs5],[18.5,F.A4g],[19.5,F.D5g],
+      [20.5,F.A4g],[21.5,F.Fs5],[22.5,F.A4g],[23.5,F.Fs5],
+      [24.5,F.B4g],[25.5,F.E5g],[26.5,F.B4g],[27.5,F.E5g],
+      [28.5,F.A4g],[29.5,F.D5g],[30.5,F.A4g],[31.5,F.D5g],
+    ],
+  },
+  {
+    name:'🌊 口哨', icon:'🌊', bpm:84, total:32,
+    // G大调五声（G A B D E），轻快活泼
+    melody: [
+      [0,  F.G4w, .5, .10], [.5, F.A4w, .5, .10], [1, F.B4w, 1, .12], [2, F.D5w, 1.5, .13],
+      [3.5, F.B4w, .5, .10], [4, F.G4w, 1, .11], [5, F.A4w, 1, .10], [6, F.B4w, 2, .11],
+      [8,  F.D5w, 1, .12], [9, F.E5w, 1, .11], [10, F.G5w, 1.5, .13], [11.5, F.E5w, .5, .10],
+      [12, F.D5w, 1, .11], [13, F.B4w, 1, .10], [14, F.A4w, 2, .11],
+      [16, F.G5w, .5, .12], [16.5, F.E5w, .5, .11], [17, F.D5w, 1, .12], [18, F.B4w, 1, .11],
+      [19, F.D5w, 1, .11], [20, F.E5w, 1, .12], [21, F.G5w, 2, .13],
+      [24, F.A5w, .5, .11], [24.5, F.G5w, .5, .10], [25, F.E5w, .5, .10], [25.5, F.D5w, .5, .10],
+      [26, F.B4w, .5, .10], [26.5, F.A4w, .5, .09], [27, F.G4w, 1, .11],
+      [28, F.D5w, .5, .09], [28.5, F.E5w, .5, .09], [29, F.G5w, 1, .10], [30, F.G4w, 2, .11],
+    ],
+    bass: [
+      [0,F.G3w],[4,F.E4w],[8,F.C4w],[12,F.D4w],
+      [16,F.G3w],[20,F.E4w],[24,F.C4w],[28,F.D4w],
+    ],
+    arp: [
+      [.5,F.B4w],[1.5,F.D5w],[2.5,F.B4w],[3.5,F.D5w],
+      [4.5,F.G5w],[5.5,F.D5w],[6.5,F.B4w],[7.5,F.D5w],
+      [8.5,F.C5w||523.25],[9.5,F.G5w],[10.5,F.C5w||523.25],[11.5,F.G5w],
+      [12.5,F.D5w],[13.5,F.B4w],[14.5,F.D5w],[15.5,F.B4w],
+      [16.5,F.B4w],[17.5,F.D5w],[18.5,F.G5w],[19.5,F.D5w],
+      [20.5,F.E5w],[21.5,F.G5w],[22.5,F.E5w],[23.5,F.G5w],
+      [24.5,F.C5w||523.25],[25.5,F.G5w],[26.5,F.E5w],[27.5,F.G5w],
+      [28.5,F.D5w],[29.5,F.B4w],[30.5,F.D5w],[31.5,F.G4w],
+    ],
+  },
   ];
-  // 伴奏：低音+分解和弦（很轻，铺底用）
-  const CHORD_BASS = [
-    [0, N.C3], [4, N.A3], [8, N.F3], [12, N.G3],
-    [16, N.C3], [20, N.A3], [24, N.F3], [28, N.G3],
-  ];
-  const ARPEGGIO = [
-    // 每拍后半拍轻点一个和弦音，像风铃
-    [0.5, N.G4], [1.5, N.E4], [2.5, N.G4], [3.5, N.E4],
-    [4.5, N.G4], [5.5, N.E4], [6.5, N.G4], [7.5, N.E4],
-    [8.5, N.A4], [9.5, N.E4], [10.5, N.A4], [11.5, N.E4],
-    [12.5, N.A4], [13.5, N.C4], [14.5, N.A4], [15.5, N.C4],
-    [16.5, N.G4], [17.5, N.E4], [18.5, N.G4], [19.5, N.C5],
-    [20.5, N.G4], [21.5, N.E4], [22.5, N.G4], [23.5, N.E4],
-    [24.5, N.A4], [25.5, N.E4], [26.5, N.D4], [27.5, N.E4],
-    [28.5, N.G4], [29.5, N.E4], [30.5, N.G4], [31.5, N.E4],
-  ];
-  const BPM = 72, SPB = 60/BPM, TOTAL_BEATS = 32;
 
   function ensureCtx(){
     if(!ac){
@@ -94,62 +160,87 @@ const AmbientMusic = (() => {
     }
     if(ac.state==='suspended') ac.resume();
   }
-  // 音乐盒/卡林巴音色：快攻+指数衰减，加一个高八度泛音增加亮度
-  function pluck(freq, dur, vol, when){
+  // 音色：音乐盒（正弦+2倍频泛音）
+  function pluckMusicbox(freq, dur, vol, t0){
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type='sine'; o.frequency.value=freq;
+    g.gain.setValueAtTime(vol,t0); g.gain.exponentialRampToValueAtTime(0.001,t0+dur);
+    o.connect(g).connect(master); o.start(t0); o.stop(t0+dur+0.05);
+    const o2 = ac.createOscillator(), g2 = ac.createGain();
+    o2.type='sine'; o2.frequency.value=freq*2;
+    g2.gain.setValueAtTime(vol*0.3,t0); g2.gain.exponentialRampToValueAtTime(0.001,t0+dur*0.5);
+    o2.connect(g2).connect(master); o2.start(t0); o2.stop(t0+dur*0.5+0.05);
+  }
+  // 音色：古筝（锯齿+低通滤波，衰减稍长）
+  function pluckGuzheng(freq, dur, vol, t0){
+    const o = ac.createOscillator(), g = ac.createGain(), f = ac.createBiquadFilter();
+    o.type='sawtooth'; o.frequency.value=freq;
+    f.type='lowpass'; f.frequency.value=freq*4; f.Q.value=1;
+    g.gain.setValueAtTime(vol*0.8,t0); g.gain.exponentialRampToValueAtTime(0.001,t0+dur*1.3);
+    o.connect(f).connect(g).connect(master); o.start(t0); o.stop(t0+dur*1.3+0.05);
+    const o2 = ac.createOscillator(), g2 = ac.createGain();
+    o2.type='sine'; o2.frequency.value=freq*2;
+    g2.gain.setValueAtTime(vol*0.2,t0); g2.gain.exponentialRampToValueAtTime(0.001,t0+dur*0.6);
+    o2.connect(g2).connect(master); o2.start(t0); o2.stop(t0+dur*0.6+0.05);
+  }
+  // 音色：口哨（三角波+颤音LFO）
+  function pluckWhistle(freq, dur, vol, t0){
+    const o = ac.createOscillator(), g = ac.createGain(), lfo = ac.createOscillator(), lg = ac.createGain();
+    o.type='triangle'; o.frequency.value=freq;
+    lfo.type='sine'; lfo.frequency.value=5.5; lg.gain.value=freq*0.015;
+    lfo.connect(lg).connect(o.frequency);
+    g.gain.setValueAtTime(0.001,t0);
+    g.gain.linearRampToValueAtTime(vol,t0+0.04);
+    g.gain.setValueAtTime(vol,t0+dur*0.55);
+    g.gain.exponentialRampToValueAtTime(0.001,t0+dur);
+    o.connect(g).connect(master); o.start(t0); o.stop(t0+dur+0.05);
+    lfo.start(t0); lfo.stop(t0+dur+0.05);
+  }
+  function pluck(freq, dur, vol, t0, timbre){
     try{
-      const t0 = when;
-      // 主音
-      const o = ac.createOscillator(), g = ac.createGain();
-      o.type = 'sine'; o.frequency.value = freq;
-      g.gain.setValueAtTime(vol, t0);
-      g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
-      o.connect(g).connect(master); o.start(t0); o.stop(t0+dur+0.05);
-      // 泛音（2倍频，很轻，增加金属质感）
-      const o2 = ac.createOscillator(), g2 = ac.createGain();
-      o2.type = 'sine'; o2.frequency.value = freq*2;
-      g2.gain.setValueAtTime(vol*0.3, t0);
-      g2.gain.exponentialRampToValueAtTime(0.001, t0 + dur*0.5);
-      o2.connect(g2).connect(master); o2.start(t0); o2.stop(t0+dur*0.5+0.05);
+      if(timbre==='guzheng') pluckGuzheng(freq,dur,vol,t0);
+      else if(timbre==='whistle') pluckWhistle(freq,dur,vol,t0);
+      else pluckMusicbox(freq,dur,vol,t0);
     }catch(e){}
   }
-  // 播放完整一轮（32拍 ≈ 26.7秒）
-  function playLoop(startTime){
-    const t0 = startTime;
-    // 旋律
-    for(const [beat, freq, dur, vol] of MELODY){
-      pluck(freq, dur*SPB*1.8, vol, t0 + beat*SPB);  // 时值乘1.8让尾音自然延伸
-    }
-    // 低音（柔和，短促）
-    for(const [beat, freq] of CHORD_BASS){
+  function playLoop(t0, track){
+    const spb = 60/track.bpm;
+    const timbre = track.name.includes('古筝')?'guzheng':track.name.includes('口哨')?'whistle':'musicbox';
+    for(const [beat,freq,dur,vol] of track.melody) pluck(freq, dur*spb*1.8, vol, t0+beat*spb, timbre);
+    for(const [beat,freq] of track.bass){
       try{
-        const when = t0 + beat*SPB;
-        const o = ac.createOscillator(), g = ac.createGain();
-        o.type='triangle'; o.frequency.value = freq;
-        g.gain.setValueAtTime(0.07, when);
-        g.gain.exponentialRampToValueAtTime(0.001, when + SPB*3);
-        o.connect(g).connect(master); o.start(when); o.stop(when+SPB*3+0.1);
+        const when=t0+beat*spb;
+        const o=ac.createOscillator(), g=ac.createGain();
+        o.type='triangle'; o.frequency.value=freq;
+        g.gain.setValueAtTime(0.07,when); g.gain.exponentialRampToValueAtTime(0.001,when+spb*3);
+        o.connect(g).connect(master); o.start(when); o.stop(when+spb*3+0.1);
       }catch(e){}
     }
-    // 分解和弦（风铃感）
-    for(const [beat, freq] of ARPEGGIO){
-      pluck(freq, SPB*1.2, 0.035, t0 + beat*SPB);
-    }
+    for(const [beat,freq] of track.arp) pluck(freq, spb*1.2, 0.035, t0+beat*spb, timbre);
   }
   function scheduleLoop(){
-    if(!playing || !ac) return;
-    const now = ac.currentTime;
-    playLoop(now + 0.1);
-    loopTimer = setTimeout(scheduleLoop, TOTAL_BEATS*SPB*1000 - 200);  // 稍提前接续
+    if(!playing||!ac) return;
+    const track = TRACKS[trackIdx % TRACKS.length];
+    playLoop(ac.currentTime+0.1, track);
+    loopTimer = setTimeout(scheduleLoop, track.total*(60/track.bpm)*1000 - 200);
   }
   return {
     toggle(){
       if(playing){ this.stop(); return false; }
-      ensureCtx(); playing = true;
-      scheduleLoop();
-      return true;
+      ensureCtx(); playing=true; scheduleLoop(); return true;
     },
+    setTrack(idx){
+      trackIdx = idx % TRACKS.length;
+      localStorage.setItem('fishing_music_track', String(trackIdx));
+      if(playing){ // 切曲时重新开始
+        if(loopTimer){ clearTimeout(loopTimer); loopTimer=null; }
+        scheduleLoop();
+      }
+    },
+    get trackIndex(){ return trackIdx; },
+    get tracks(){ return TRACKS.map(t=>({name:t.name, icon:t.icon})); },
     stop(){
-      playing = false;
+      playing=false;
       if(loopTimer){ clearTimeout(loopTimer); loopTimer=null; }
       if(ac){ ac.close().catch(()=>{}); ac=null; master=null; }
     },
@@ -1246,9 +1337,48 @@ const Session = {
     hidePopup('#popup-pause');
   },
   toggleMusic(){
-    const on = AmbientMusic.toggle();
-    $('#btn-music').textContent = on ? '🎵' : '🔇';
-    $('#btn-music').style.opacity = on ? '1' : '0.5';
+    // 弹出音乐选择面板
+    this.renderMusicPanel();
+    showPopup('#panel-music');
+  },
+  renderMusicPanel(){
+    const tracks = AmbientMusic.tracks;
+    const cur = AmbientMusic.trackIndex;
+    const isOn = AmbientMusic.playing;
+    let html = '';
+    tracks.forEach((t,i)=>{
+      const active = isOn && i===cur;
+      html += `<button class="music-track-btn ${active?'active':''}" data-track="${i}">
+        <span class="track-icon">${t.icon}</span>
+        <span class="track-name">${t.name.replace(t.icon+' ','')}</span>
+        ${active?'<span class="track-on">▶ 播放中</span>':''}
+      </button>`;
+    });
+    html += `<button class="music-track-btn off" id="btn-music-off">
+      <span class="track-icon">🔇</span>
+      <span class="track-name">关闭音乐</span>
+    </button>`;
+    $('#music-track-list').innerHTML = html;
+    // 绑定选择
+    document.querySelectorAll('.music-track-btn[data-track]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const idx = parseInt(btn.dataset.track);
+        if(!AmbientMusic.playing){ AudioSys.unlock(); AmbientMusic.toggle(); }
+        AmbientMusic.setTrack(idx);
+        this.renderMusicPanel();
+        $('#btn-music').textContent = '🎵';
+        $('#btn-music').style.opacity = '1';
+        toast('已切换到 '+AmbientMusic.tracks[idx].name);
+      });
+    });
+    const offBtn = $('#btn-music-off');
+    if(offBtn) offBtn.addEventListener('click', ()=>{
+      AmbientMusic.stop();
+      hidePopup('#panel-music');
+      $('#btn-music').textContent = '🔇';
+      $('#btn-music').style.opacity = '0.5';
+      toast('音乐已关闭');
+    });
   },
   format(){
     const m = Math.floor(this.left/60), sec = this.left%60;
@@ -1303,6 +1433,7 @@ const Game = {
     $('#btn-log-close').addEventListener('click', ()=>hidePopup('#panel-log'));
     $('#btn-help').addEventListener('click', ()=>showPopup('#panel-help'));
     $('#btn-help-close').addEventListener('click', ()=>hidePopup('#panel-help'));
+    $('#btn-music-close').addEventListener('click', ()=>hidePopup('#panel-music'));
     $('#btn-mode-tai').addEventListener('click', ()=>Lake.setMode('tai'));
     $('#btn-mode-lure').addEventListener('click', ()=>Lake.setMode('lure'));
     // v0.7.5 计时/暂停/音乐

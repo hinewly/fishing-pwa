@@ -16,6 +16,15 @@ canvas#lake-canvas,canvas#fight-canvas{position:absolute;inset:0;width:100%;heig
 .session-timer{background:rgba(6,20,30,.6);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:6px 12px;font-size:14px;font-weight:600;color:var(--gold);font-variant-numeric:tabular-nums;min-width:64px;text-align:center}
 .session-timer.warning{color:var(--red);border-color:rgba(255,80,80,.4);animation:pulse-timer 1s infinite}
 @keyframes pulse-timer{50%{opacity:.5}}
+.music-panel h2{font-size:20px;margin-bottom:14px}
+.music-track-list{display:flex;flex-direction:column;gap:8px}
+.music-track-btn{display:flex;align-items:center;gap:10px;padding:12px 16px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:12px;color:var(--ink);font-size:15px;cursor:pointer;text-align:left;width:100%}
+.music-track-btn:active{background:rgba(255,255,255,.15)}
+.music-track-btn.active{background:rgba(62,207,114,.15);border-color:var(--green)}
+.music-track-btn.off{color:var(--dim)}
+.track-icon{font-size:20px}
+.track-name{flex:1}
+.track-on{font-size:12px;color:var(--green);white-space:nowrap}
 
 .lake-tip{position:absolute;top:64px;left:50%;transform:translateX(-50%);background:rgba(6,20,30,.6);padding:6px 14px;border-radius:20px;font-size:13px;color:var(--dim);white-space:nowrap}
 
