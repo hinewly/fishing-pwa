@@ -81,18 +81,21 @@ function drawAngler(c, x, y, s, t, mode, silhouette, mirror){
   const C = silhouette
     ? { hat:'rgba(18,28,36,0.9)', shirt:'rgba(18,28,36,0.9)', vest:'rgba(18,28,36,0.9)', pants:'rgba(18,28,36,0.9)', boot:'rgba(18,28,36,0.9)', skin:'rgba(18,28,36,0.9)', rod:'#8a9aa4' }
     : { hat:'#d9b36c', hatDark:'#c39f55', shirt:'#75855a', vest:'#57653f', pants:'#3d4d5e', boot:'#2e3136', skin:'#d8a07a', rod:'#8a6b46' };
-  const lean = mode==='bite' ? 0.10 : 0.05 + Math.sin(t*1.2)*0.015;
+  const lean = mode==='bite' ? 0.10 : mode==='cast' ? 0.03 : 0.05 + Math.sin(t*1.2)*0.015;
+  const k = mode==='cast' ? (drawAngler.standK ?? 0) : 0;   // 0=坐 1=站
+  const lerp = (a,b)=>a+(b-a)*k;
 
   // 凳子
   c.fillStyle = silhouette ? C.boot : '#6e5638';
   c.fillRect(-14, -24, 26, 4);
   c.fillRect(-12, -20, 3, 20); c.fillRect(7, -20, 3, 20);
 
-  // 后腿（远侧，先画）
+  // 后腿（远侧，先画）：坐姿屈膝 ↔ 站姿伸直
   c.strokeStyle = C.pants; c.lineWidth = 8; c.lineCap = 'round';
-  c.beginPath(); c.moveTo(2, -26); c.quadraticCurveTo(16, -22, 18, -10); c.stroke();
+  c.beginPath(); c.moveTo(2, -26);
+  c.quadraticCurveTo(lerp(16,5), lerp(-22,-16), lerp(18,3), lerp(-10,-2)); c.stroke();
   c.fillStyle = C.boot;
-  c.beginPath(); c.ellipse(19, -4, 8, 3.5, 0, 0, Math.PI*2); c.fill();
+  c.beginPath(); c.ellipse(lerp(19,4), lerp(-4,-1), 8, 3.5, 0, 0, Math.PI*2); c.fill();
 
   // 躯干（前倾）
   c.save(); c.translate(2, -26); c.rotate(lean);
@@ -124,9 +127,10 @@ function drawAngler(c, x, y, s, t, mode, silhouette, mirror){
 
   // 前腿
   c.strokeStyle = C.pants; c.lineWidth = 8.5;
-  c.beginPath(); c.moveTo(4, -26); c.quadraticCurveTo(22, -26, 30, -12); c.stroke();
+  c.beginPath(); c.moveTo(4, -26);
+  c.quadraticCurveTo(lerp(22,13), lerp(-26,-16), lerp(30,11), lerp(-12,-2)); c.stroke();
   c.fillStyle = C.boot;
-  c.beginPath(); c.ellipse(33, -4, 9, 3.8, 0, 0, Math.PI*2); c.fill();
+  c.beginPath(); c.ellipse(lerp(33,13), lerp(-4,-1), 9, 3.8, 0, 0, Math.PI*2); c.fill();
 
   // 前臂（握竿中部）
   const shY = -52 + lean*26;
@@ -134,7 +138,9 @@ function drawAngler(c, x, y, s, t, mode, silhouette, mirror){
   c.beginPath(); c.moveTo(10, shY+4); c.quadraticCurveTo(22, shY+10, 30, -18); c.stroke();
 
   // 鱼竿：以握点为轴，bite 时下拉
-  const rodDrop = mode==='bite' ? 0.35 + Math.sin(t*18)*0.03 : (mode==='fight' ? (drawAngler.fightDrop ?? 0.20) : 0.02 + Math.sin(t*1.5)*0.012);
+  const rodDrop = mode==='cast' ? (drawAngler.castDrop ?? 0.02)
+    : mode==='bite' ? 0.35 + Math.sin(t*18)*0.03
+    : (mode==='fight' ? (drawAngler.fightDrop ?? 0.20) : 0.02 + Math.sin(t*1.5)*0.012);
   c.save(); c.translate(27, -17); c.rotate(rodDrop);
   c.strokeStyle = C.rod; c.lineWidth = 3; c.lineCap = 'round';
   c.beginPath(); c.moveTo(-12, 2);
@@ -186,11 +192,20 @@ function drawShoreAngler(c, W, H, t, lake){
   }
   // 钓鱼人
   const ax = W*0.115, ay = H*0.905;
-  const mode = lake.state==='biting' ? 'bite' : 'idle';
+  let mode = lake.state==='biting' ? 'bite' : 'idle';
+  if(lake.state==='casting' && lake.castAnim){
+    // v0.7.3 抛竿三段：起身后摆 → 挥竿前甩 → 收竿坐回
+    const T = lake.castAnim.t;
+    if(T < 0.45){ const q = T/0.45; drawAngler.standK = Math.sin(q*Math.PI/2); drawAngler.castDrop = 0.02 - q*1.0; }
+    else if(T < 0.62){ const q = (T-0.45)/0.17; drawAngler.standK = 1; drawAngler.castDrop = -0.98 + q*1.33; }
+    else if(T < 1.12){ drawAngler.standK = 1; drawAngler.castDrop = 0.35; }
+    else { const q = Math.min(1,(T-1.12)/0.28); drawAngler.standK = 1-Math.sin(q*Math.PI/2); drawAngler.castDrop = 0.35 - q*0.33; }
+    mode = 'cast';
+  }
   drawAngler(c, ax, ay, Math.min(W,H)/430*1.15, t, mode, false);
   // 竿稍坐标（与 drawAngler 内部几何一致：握点(27,-17) rotate(rodDrop) 竿尖(105,-52)）
   const s = Math.min(W,H)/430*1.15;
-  const rodDrop = mode==='bite' ? 0.35 : 0.02;
+  const rodDrop = mode==='cast' ? (drawAngler.castDrop ?? 0.02) : mode==='bite' ? 0.35 : 0.02;
   const hx = ax + 27*s, hy = ay - 17*s;
   const dx = 105*Math.cos(rodDrop) + 52*Math.sin(rodDrop);
   const dy = -(105*Math.sin(rodDrop)) + (-52)*Math.cos(rodDrop) + 2*Math.cos(rodDrop);
@@ -246,9 +261,21 @@ const Lake = {
       : '路亚：抛投后按住收线，停顿+轻点更诱鱼，炸水花马上扬竿！';
   },
   cast(){
-    AudioSys.unlock(); AudioSys.splash();
-    this.bobber = { t:0 };
+    if(this.state==='casting') return;
+    AudioSys.unlock();
+    // v0.7.3 抛竿动画：先演完"起身挥竿飞漂落水"，再进等口
+    this.state = 'casting';
+    this.castAnim = { t: 0, launched: false, landedAt: null, from: null, to: null };
+    this.bobber = null;
     $('#btn-cast').classList.remove('pulse');
+    $('#btn-cast').disabled = true;
+    $('#btn-cast').textContent = '抛竿中…';
+    $('#lake-tip').textContent = '抛竿～';
+  },
+  finishCast(){
+    const btn = $('#btn-cast'); btn.disabled = false;
+    this.bobber = { t:0 };
+    AudioSys.splash();
     if(this.mode==='tai'){
       this.state='waiting'; this.waitTimer=0;
       this.floatOffset=0; this.fakeT=-1; this.biteKind = Math.random()<0.25?'song':'dun';
@@ -262,7 +289,7 @@ const Lake = {
       const n = diff===1 ? (Math.random()<0.6?0:1) : diff===3 ? (Math.random()<0.5?1:2) : (Math.random()<0.55?0:1);
       for(let i=0;i<n;i++) this.fakes.push(rand(1.5, Math.max(2, this.biteAt-1)));
       this.fakes.sort((a,b)=>a-b);
-      $('#btn-cast').textContent = '刺鱼！';
+      btn.textContent = '刺鱼！';
       $('#lake-tip').textContent = '等口……看漂：顿1目是假口，吞2目以上再提！';
     } else {
       this.state='retrieving'; this.retProg=0; this.holding=false;
@@ -270,7 +297,7 @@ const Lake = {
       const ldiff = this.spot.diff||2;
       this.nextAttack = ldiff===1 ? rand(1,2.5) : ldiff===3 ? rand(2,4.5) : rand(1.2,3.5);
       this.attackWin = ldiff===1 ? 0.8 : ldiff===3 ? 0.55 : 0.7;
-      $('#btn-cast').textContent = '按住收线';
+      btn.textContent = '按住收线';
       $('#lake-tip').textContent = '按住收线收饵……停顿一下、轻点一下更诱鱼';
     }
   },
@@ -314,6 +341,29 @@ const Lake = {
     Game.hookup();
   },
   update(dt){
+    // —— 抛竿动画时间轴 ——
+    if(this.state==='casting'){
+      const a = this.castAnim;
+      a.t += dt;
+      const W = innerWidth, H = innerHeight;
+      if(!a.launched && a.t >= 0.62){
+        // 挥竿到位：漂从竿稍飞出（抛物线）
+        a.launched = true; a.launchT = a.t;
+        const s = Math.min(W,H)/430*1.15, ax = W*0.115, ay = H*0.905;
+        const rd = 0.35;
+        const dx = 105*Math.cos(rd) + 52*Math.sin(rd);
+        const dy = -(105*Math.sin(rd)) - 52*Math.cos(rd) + 2*Math.cos(rd);
+        a.from = { x: ax + 27*s + dx*s, y: ay - 17*s + dy*s };
+        a.to = { x: this.spot.x*W, y: this.spot.y*H };
+        AudioSys.tick();
+      }
+      if(a.launched && a.landedAt === null && a.t >= 0.62 + 0.5){
+        a.landedAt = a.t;   // 漂落水
+        AudioSys.splash();
+      }
+      if(a.t >= 1.4){ this.finishCast(); }
+      return;
+    }
     // —— 台钓等口 ——
     if(this.state==='waiting'){
       this.waitTimer += dt;
@@ -537,6 +587,32 @@ const Lake = {
     }
     // —— 岸坡 + 钓鱼人 + 竿线 ——
     tip = drawShoreAngler(c, W, H, t, this);
+    // —— 抛竿动画：飞行漂 + 线 + 落水涟漪 ——
+    if(this.state==='casting' && this.castAnim){
+      const a = this.castAnim;
+      if(a.launched && !a.landedAt){
+        const q = Math.min(1, (a.t - a.launchT)/0.5);
+        const fx = a.from.x + (a.to.x - a.from.x)*q;
+        const fy = a.from.y + (a.to.y - a.from.y)*q - Math.sin(q*Math.PI)*H*0.16;
+        if(tip){
+          c.beginPath(); c.moveTo(tip.tipX, tip.tipY);
+          c.quadraticCurveTo((tip.tipX+fx)/2, Math.min(tip.tipY,fy)+18, fx, fy);
+          c.strokeStyle = 'rgba(255,255,255,0.55)'; c.lineWidth = 1.2; c.stroke();
+        }
+        c.beginPath(); c.arc(fx, fy, 4.5, 0, Math.PI*2);
+        c.fillStyle = '#e0432c'; c.fill();
+        c.beginPath(); c.arc(fx, fy-3, 3, 0, Math.PI*2);
+        c.fillStyle = '#f2ead2'; c.fill();
+      }
+      if(a.landedAt !== null){
+        const lt = a.t - a.landedAt;
+        for(let i=0;i<3;i++){
+          c.beginPath(); c.ellipse(a.to.x, a.to.y, 10+lt*44+i*9, (10+lt*44+i*9)*0.32, 0, 0, Math.PI*2);
+          c.strokeStyle = `rgba(255,255,255,${Math.max(0, 0.5 - lt*0.9 - i*0.12)})`;
+          c.lineWidth = 1.5; c.stroke();
+        }
+      }
+    }
     if(this.bobber && this.spot){
       let ex, ey, sag;
       if(this.mode==='tai'){
