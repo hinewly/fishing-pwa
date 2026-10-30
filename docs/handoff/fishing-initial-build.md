@@ -1,6 +1,6 @@
 # 钓鱼·湖畔 首版构建 交接
 
-- last_updated: 2026-10-30 11:00
+- last_updated: 2026-10-30 11:40
 - status: active
 - version: v0.6.0
 
@@ -13,6 +13,7 @@
 v0.1.0 可玩 Demo 本地完成并通过无头浏览器全流程实测（选位→抛竿→等口→刺鱼→搏鱼→抄网→入护→渔获清单），页面零报错。**未部署**，等用户试玩确认手感后再走部署流程。
 
 ## 最近完成
+- v0.6.3（主屏幕 PWA 体验补全）：①生成应用图标（Canvas 矢量鲤鱼+钓钩+气泡，public/icons/ 三尺寸 192/512/apple 180，自绘不违反零素材约定）②manifest icons 配齐(含 maskable)+display 改 standalone ③index.html 加 apple-touch-icon + apple-mobile-web-app-* meta ④图标入 SW 缓存，CACHE v10
 - v0.6.2（用户反馈：iPad 上刷新按钮没反应）：①刷新按钮从 location.reload() 改为 location.replace('./?r='+时间戳)——iOS 主屏PWA模式下 reload 可能无效（已知毛病），真实跳转必然生效且顺带绕过 HTML 缓存 ②点击改事件委托（防 JS 时序问题丢监听）③SW 缓存 v9 ④用 WebKit(Safari内核)+iPad触屏模拟验证线上：按钮位置/遮挡/触摸全通过；注意 Playwright 需 playwright install webkit
 - v0.6.1（用户反馈：线上用户拿不到新版本）：①顶栏加 🔄 刷新按钮（用户拍板：手动刷新比自动 reload 好，自动 reload 会在搏鱼对局中打断丢鱼）②SW 策略改进：HTML 导航请求改网络优先（no-cache 强制校验，离线回退缓存）、每次页面加载 reg.update() 强制检查更新（浏览器默认24h才查一次）、新版本装好后 toast 提示「点右上角 🔄」③踩坑记录：SW 内 fetch(e.request) 对 navigate 模式请求会抛 TypeError，必须 new Request(e.request.url) 重建；本地 python http.server 无 Cache-Control 头会启发式缓存干扰测试；测试一律用副本目录，别在真实 public/ 上边测边 git checkout 还原（曾把写好的 sw.js 清空/回滚）
 - v0.6.0（用户反馈：失败太频繁钓不到不爽+渔获清单没图+水下鱼死板黑影）：①成功率全局标定（模拟600场实测：新手最差情况 ⭐100%/⭐⭐93%/⭐⭐⭐82%，熟练全收）——红线容忍2.8/2.2/1.7s、低张力容忍5.5/4s、张力增速降为20+mult*8、红线计时衰减1.2/s、大鱼动作间隔拉长(4.5-9s)、冲刺倍率2.0、洗鳃窗口0.95s、抄网绿区0.62+转速放慢、等口缩短(深水3.5-9s/水草4-10s)、假口减少、真口窗口加宽(基准1.9s)、路亚扬竿窗口0.7s ②渔获清单每行加鱼缩略图（已解锁彩色/未解锁剪影，注意必须translate到画布中心）③水下鱼从纯黑剪影改为彩色水下模式：体色向水色[26,66,90]偏移55%，保留花纹/眼/鳃细节，新增微动作（呼吸体缩放/鳃盖开合双线/嘴随鳃张合/胸鳍划水）；drawFishArt 新增 opts.underwater，silhouette 仍保留（清单未解锁用）④修 bug：pcC 急切求值对 pattern:'none' 鱼种炸（鲢/翘嘴/鲶/青）⑤SW 缓存 v8
