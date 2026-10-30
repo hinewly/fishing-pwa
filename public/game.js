@@ -286,18 +286,21 @@ function drawAngler(c, x, y, s, t, mode, silhouette, mirror){
   const C = silhouette
     ? { hat:'rgba(18,28,36,0.9)', shirt:'rgba(18,28,36,0.9)', vest:'rgba(18,28,36,0.9)', pants:'rgba(18,28,36,0.9)', boot:'rgba(18,28,36,0.9)', skin:'rgba(18,28,36,0.9)', rod:'#8a9aa4' }
     : { hat:'#d9b36c', hatDark:'#c39f55', shirt:'#75855a', vest:'#57653f', pants:'#3d4d5e', boot:'#2e3136', skin:'#d8a07a', rod:'#8a6b46' };
-  const k = mode==='cast' ? (drawAngler.standK ?? 0) : 0;   // 0=坐 1=站
+  const k = (mode==='cast' || mode==='stand') ? (drawAngler.standK ?? 0) : 0;   // 0=坐 1=站
   const lean = mode==='cast'
     ? (drawAngler.castLean ?? 0)
+    : mode==='stand' ? 0.05 + Math.sin(t*1.2)*0.015
     : mode==='bite' ? 0.10 : 0.05 + Math.sin(t*1.2)*0.015;
   const lerp = (a,b)=>a+(b-a)*k;
   const hipY = -26 - k*14;          // 站起时臀部真正离开凳面
   const gripY = -17 - k*14;         // 握竿点随身体抬高
 
-  // 凳子
-  c.fillStyle = silhouette ? C.boot : '#6e5638';
-  c.fillRect(-14, -24, 26, 4);
-  c.fillRect(-12, -20, 3, 20); c.fillRect(7, -20, 3, 20);
+  // 凳子（站姿时不画，避免遮挡脚部）
+  if(k < 0.05){
+    c.fillStyle = silhouette ? C.boot : '#6e5638';
+    c.fillRect(-14, -24, 26, 4);
+    c.fillRect(-12, -20, 3, 20); c.fillRect(7, -20, 3, 20);
+  }
 
   // 后腿（远侧，先画）：坐姿屈膝 ↔ 站姿伸直
   c.strokeStyle = C.pants; c.lineWidth = 8; c.lineCap = 'round';
@@ -348,6 +351,7 @@ function drawAngler(c, x, y, s, t, mode, silhouette, mirror){
 
   // 鱼竿：以握点为轴，bite 时下拉
   const rodDrop = mode==='cast' ? (drawAngler.castDrop ?? 0.02)
+    : mode==='stand' ? 0.02 + Math.sin(t*1.5)*0.012
     : mode==='bite' ? 0.35 + Math.sin(t*18)*0.03
     : (mode==='fight' ? (drawAngler.fightDrop ?? 0.20) : 0.02 + Math.sin(t*1.5)*0.012);
   c.save(); c.translate(27, gripY); c.rotate(rodDrop);
@@ -413,6 +417,8 @@ function drawShoreAngler(c, W, H, t, lake){
     else { const q = Math.min(1,(T-1.12)/0.28); drawAngler.standK = 1-Math.sin(q*Math.PI/2); drawAngler.castDrop = 0.35 - q*0.33; drawAngler.castLean = 0; }
     mode = 'cast';
   }
+  if(lake.mode==='lure' && lake.state==='retrieving'){ mode='stand'; drawAngler.standK = 1; }
+  else if(mode!=='cast') drawAngler.standK = 0;
   drawAngler(c, ax, ay, Math.min(W,H)/430*1.15, t, mode, false);
   // 竿稍坐标（与 drawAngler 内部几何一致：握点(27,-17) rotate(rodDrop) 竿尖(105,-52)）
   const s = Math.min(W,H)/430*1.15;
@@ -984,18 +990,24 @@ const Fight = {
     AudioSys.splash();
   },
   netPhase(){ return (this.F.netT * this.netSpeed()) % (2*Math.PI); },
-  netSpeed(){ return 2.7 + this.F.fish.strength*2.0; },
+  netSpeed(){ return 2.7 + this.F.fish.strength*1.2; },
   inGreen(){
     let d = Math.abs(this.netPhase() - Math.PI);
     if(d > Math.PI) d = 2*Math.PI - d;
-    return d < 0.62;
+    return d < 0.8;
   },
   onNet(){
     if(this.phase!=='net') return;
     if(this.inGreen()){
       this.finish(true, null);
+    } else if(!this.F.netMissed){
+      // v0.7.7 一次容错：抄早了不跑鱼，重新等下一段挣扎节奏
+      this.F.netMissed = true;
+      this.F.netT = 0;
+      $('#fight-msg').textContent = '💦 抄早了！鱼窜开了，稳住再抄一次';
+      AudioSys.splash();
     } else {
-      this.finish(false, '抄网撞上鱼头！', '鱼一个摆尾脱钩跑了。挣扎这么凶不能急，看准它喘气的间隙再抄。');
+      this.finish(false, '抄网撞上鱼头！', '鱼一个摆尾脱钩跑了。两次机会都错过了，挣扎这么凶不能急，看准它喘气的间隙再抄。');
     }
   },
   finish(win, title, desc){
@@ -1204,7 +1216,9 @@ const Fight = {
     if(this.phase==='net'){
       const ok = this.inGreen();
       const bar = $('#fight-msg');
-      bar.textContent = ok ? '✅ 就是现在！点抄网！' : '它在挣扎……等它缓一下';
+      bar.textContent = ok ? '✅ 就是现在！点抄网！'
+        : f.netMissed ? '💦 抄早了！等它下一个喘气间隙再抄（还有一次机会）'
+        : '它在挣扎……等它缓一下';
       bar.style.color = ok ? '#3ecf72' : '';
     }
   },
