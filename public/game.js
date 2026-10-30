@@ -993,7 +993,22 @@ const Game = {
     });
     ['pointerup','pointerleave','pointercancel'].forEach(ev=>
       castBtn.addEventListener(ev, ()=>{ Lake.holding = false; }));
-    if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
+    // v0.6.0 版本更新：每次打开自动检查+静默装新版，toast 提示用户点 🔄 手动刷新
+    $('#btn-refresh').addEventListener('click', ()=>location.reload());
+    if('serviceWorker' in navigator){
+      navigator.serviceWorker.register('sw.js').then(reg=>{
+        reg.update().catch(()=>{});   // 浏览器默认24h才查一次，这里每次加载都查
+        reg.addEventListener('updatefound', ()=>{
+          const nw = reg.installing;
+          if(nw) nw.addEventListener('statechange', ()=>{
+            if(nw.state==='installed' && navigator.serviceWorker.controller){
+              // 新版已装好且已接管缓存，下次刷新即全量新版；不打断当前对局
+              toast('🆕 已更新到新版本，点右上角 🔄 立即体验', 4000);
+            }
+          });
+        });
+      }).catch(()=>{});
+    }
     requestAnimationFrame(t=>this.loop(t));
   },
   mainAction(){
