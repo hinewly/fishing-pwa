@@ -81,9 +81,13 @@ function drawAngler(c, x, y, s, t, mode, silhouette, mirror){
   const C = silhouette
     ? { hat:'rgba(18,28,36,0.9)', shirt:'rgba(18,28,36,0.9)', vest:'rgba(18,28,36,0.9)', pants:'rgba(18,28,36,0.9)', boot:'rgba(18,28,36,0.9)', skin:'rgba(18,28,36,0.9)', rod:'#8a9aa4' }
     : { hat:'#d9b36c', hatDark:'#c39f55', shirt:'#75855a', vest:'#57653f', pants:'#3d4d5e', boot:'#2e3136', skin:'#d8a07a', rod:'#8a6b46' };
-  const lean = mode==='bite' ? 0.10 : mode==='cast' ? 0.03 : 0.05 + Math.sin(t*1.2)*0.015;
   const k = mode==='cast' ? (drawAngler.standK ?? 0) : 0;   // 0=坐 1=站
+  const lean = mode==='cast'
+    ? (drawAngler.castLean ?? 0)
+    : mode==='bite' ? 0.10 : 0.05 + Math.sin(t*1.2)*0.015;
   const lerp = (a,b)=>a+(b-a)*k;
+  const hipY = -26 - k*14;          // 站起时臀部真正离开凳面
+  const gripY = -17 - k*14;         // 握竿点随身体抬高
 
   // 凳子
   c.fillStyle = silhouette ? C.boot : '#6e5638';
@@ -92,13 +96,13 @@ function drawAngler(c, x, y, s, t, mode, silhouette, mirror){
 
   // 后腿（远侧，先画）：坐姿屈膝 ↔ 站姿伸直
   c.strokeStyle = C.pants; c.lineWidth = 8; c.lineCap = 'round';
-  c.beginPath(); c.moveTo(2, -26);
+  c.beginPath(); c.moveTo(2, hipY);
   c.quadraticCurveTo(lerp(16,5), lerp(-22,-16), lerp(18,3), lerp(-10,-2)); c.stroke();
   c.fillStyle = C.boot;
   c.beginPath(); c.ellipse(lerp(19,4), lerp(-4,-1), 8, 3.5, 0, 0, Math.PI*2); c.fill();
 
   // 躯干（前倾）
-  c.save(); c.translate(2, -26); c.rotate(lean);
+  c.save(); c.translate(2, hipY); c.rotate(lean);
   c.fillStyle = C.shirt;
   c.beginPath();
   c.moveTo(-6, 0); c.quadraticCurveTo(-8, -22, -3, -32);
@@ -122,18 +126,18 @@ function drawAngler(c, x, y, s, t, mode, silhouette, mirror){
   c.fillRect(-9, -47.2, 30, 1.6);
   // 后臂（扶竿尾）
   c.strokeStyle = C.shirt; c.lineWidth = 6;
-  c.beginPath(); c.moveTo(2, -26); c.quadraticCurveTo(14, -18, 26, -16); c.stroke();
+  c.beginPath(); c.moveTo(2, hipY); c.quadraticCurveTo(14, hipY+8, 26, gripY+1); c.stroke();
   c.restore();
 
   // 前腿
   c.strokeStyle = C.pants; c.lineWidth = 8.5;
-  c.beginPath(); c.moveTo(4, -26);
+  c.beginPath(); c.moveTo(4, hipY);
   c.quadraticCurveTo(lerp(22,13), lerp(-26,-16), lerp(30,11), lerp(-12,-2)); c.stroke();
   c.fillStyle = C.boot;
   c.beginPath(); c.ellipse(lerp(33,13), lerp(-4,-1), 9, 3.8, 0, 0, Math.PI*2); c.fill();
 
   // 前臂（握竿中部）
-  const shY = -52 + lean*26;
+  const shY = hipY - 26 + lean*26;
   c.strokeStyle = C.skin; c.lineWidth = 5.5;
   c.beginPath(); c.moveTo(10, shY+4); c.quadraticCurveTo(22, shY+10, 30, -18); c.stroke();
 
@@ -141,7 +145,7 @@ function drawAngler(c, x, y, s, t, mode, silhouette, mirror){
   const rodDrop = mode==='cast' ? (drawAngler.castDrop ?? 0.02)
     : mode==='bite' ? 0.35 + Math.sin(t*18)*0.03
     : (mode==='fight' ? (drawAngler.fightDrop ?? 0.20) : 0.02 + Math.sin(t*1.5)*0.012);
-  c.save(); c.translate(27, -17); c.rotate(rodDrop);
+  c.save(); c.translate(27, gripY); c.rotate(rodDrop);
   c.strokeStyle = C.rod; c.lineWidth = 3; c.lineCap = 'round';
   c.beginPath(); c.moveTo(-12, 2);
   if(mode==='fight'){ c.quadraticCurveTo(55, 18, 105, -52); }  // 搏鱼：竿身向后弯
@@ -156,8 +160,8 @@ function drawAngler(c, x, y, s, t, mode, silhouette, mirror){
 
   // 手
   c.fillStyle = C.skin;
-  c.beginPath(); c.arc(27, -17, 3.4, 0, Math.PI*2); c.fill();
-  c.beginPath(); c.arc(42, -22, 3.2, 0, Math.PI*2); c.fill();
+  c.beginPath(); c.arc(27, gripY, 3.4, 0, Math.PI*2); c.fill();
+  c.beginPath(); c.arc(42, gripY-5, 3.2, 0, Math.PI*2); c.fill();
   c.restore();
 }
 
@@ -196,17 +200,18 @@ function drawShoreAngler(c, W, H, t, lake){
   if(lake.state==='casting' && lake.castAnim){
     // v0.7.3 抛竿三段：起身后摆 → 挥竿前甩 → 收竿坐回
     const T = lake.castAnim.t;
-    if(T < 0.45){ const q = T/0.45; drawAngler.standK = Math.sin(q*Math.PI/2); drawAngler.castDrop = 0.02 - q*1.0; }
-    else if(T < 0.62){ const q = (T-0.45)/0.17; drawAngler.standK = 1; drawAngler.castDrop = -0.98 + q*1.33; }
-    else if(T < 1.12){ drawAngler.standK = 1; drawAngler.castDrop = 0.35; }
-    else { const q = Math.min(1,(T-1.12)/0.28); drawAngler.standK = 1-Math.sin(q*Math.PI/2); drawAngler.castDrop = 0.35 - q*0.33; }
+    if(T < 0.45){ const q = T/0.45; drawAngler.standK = Math.sin(q*Math.PI/2); drawAngler.castDrop = 0.02 - q*1.0; drawAngler.castLean = -0.16*Math.sin(q*Math.PI/2); }
+    else if(T < 0.62){ const q = (T-0.45)/0.17; drawAngler.standK = 1; drawAngler.castDrop = -0.98 + q*1.33; drawAngler.castLean = -0.16 + q*0.32; }
+    else if(T < 1.12){ drawAngler.standK = 1; drawAngler.castDrop = 0.35; drawAngler.castLean = 0.16 - Math.min(1,(T-0.62)/0.5)*0.16; }
+    else { const q = Math.min(1,(T-1.12)/0.28); drawAngler.standK = 1-Math.sin(q*Math.PI/2); drawAngler.castDrop = 0.35 - q*0.33; drawAngler.castLean = 0; }
     mode = 'cast';
   }
   drawAngler(c, ax, ay, Math.min(W,H)/430*1.15, t, mode, false);
   // 竿稍坐标（与 drawAngler 内部几何一致：握点(27,-17) rotate(rodDrop) 竿尖(105,-52)）
   const s = Math.min(W,H)/430*1.15;
   const rodDrop = mode==='cast' ? (drawAngler.castDrop ?? 0.02) : mode==='bite' ? 0.35 : 0.02;
-  const hx = ax + 27*s, hy = ay - 17*s;
+  const standK = drawAngler.standK ?? 0;
+  const hx = ax + 27*s, hy = ay - (17 + standK*14)*s;
   const dx = 105*Math.cos(rodDrop) + 52*Math.sin(rodDrop);
   const dy = -(105*Math.sin(rodDrop)) + (-52)*Math.cos(rodDrop) + 2*Math.cos(rodDrop);
   return { tipX: hx + dx*s, tipY: hy + dy*s };
@@ -490,18 +495,18 @@ const Lake = {
       c.font = '700 14px sans-serif'; c.textAlign='center';
       const nw = Math.max(c.measureText(s.name).width, 56) + 22;
       c.fillStyle = sel ? 'rgba(14,34,46,0.88)' : 'rgba(8,22,32,0.55)';
-      c.beginPath(); c.roundRect(sx-nw/2, sy-56, nw, 48, 12); c.fill();
+      c.beginPath(); c.roundRect(sx-nw/2, sy+28, nw, 48, 12); c.fill();
       c.strokeStyle = sel ? '#ffd250' : 'rgba(255,255,255,0.35)';
       c.lineWidth = sel ? 2 : 1; c.stroke();
       c.fillStyle = sel ? '#ffd250' : 'rgba(255,255,255,0.88)';
-      c.fillText(s.name, sx, sy-36);
+      c.fillText(s.name, sx, sy+48);
       c.font = '600 13px sans-serif';
       c.fillStyle = '#ffd250';
-      c.fillText('★'.repeat(s.stars), sx, sy-16);
+      c.fillText('★'.repeat(s.stars), sx, sy+66);
       if(sel){
         for(let i=0;i<3;i++){
           const fx = sx + Math.sin(t*0.7+i*2.1)*46;
-          c.beginPath(); c.ellipse(fx, sy+26+i*10, 14-i*2, 5, Math.sin(t+i)*0.2, 0, Math.PI*2);
+          c.beginPath(); c.ellipse(fx, sy+82+i*10, 14-i*2, 5, Math.sin(t+i)*0.2, 0, Math.PI*2);
           c.fillStyle = 'rgba(20,30,36,0.35)'; c.fill();
         }
       }
