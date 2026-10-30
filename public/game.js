@@ -43,69 +43,82 @@ const AudioSys = (() => {
   };
 })();
 
-/* ================= 背景音乐（WebAudio 合成：湖畔风+水+鸟鸣，零素材） ================= */
+/* ================= 背景轻音乐（WebAudio 生成式：和弦进行+五声音阶旋律） ================= */
 const AmbientMusic = (() => {
-  let ac=null, master=null, playing=false, timerIds=[];
+  let ac=null, master=null, playing=false, timers=[];
+  // 舒缓和弦进行：Cmaj7 → Am7 → Fmaj7 → G(sus4)，每和弦4秒
+  const CHORDS = [
+    { freqs:[130.81, 164.81, 196.00, 246.94], bass:65.41 },   // Cmaj7
+    { freqs:[110.00, 130.81, 164.81, 196.00], bass:55.00 },   // Am7
+    { freqs:[ 87.31, 110.00, 130.81, 174.61], bass:43.65 },   // Fmaj7
+    { freqs:[ 98.00, 123.47, 146.83, 196.00], bass:49.00 },   // G7sus4
+  ];
+  // C大调五声音阶（两个八度）
+  const SCALE = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 784.00, 880.00];
+  let chordIdx = 0, chordTimer = null, melodyTimer = null;
+
   function ensureCtx(){
     if(!ac){
       ac = new (window.AudioContext||window.webkitAudioContext)();
-      master = ac.createGain(); master.gain.value = 0.14; master.connect(ac.destination);
+      master = ac.createGain(); master.gain.value = 0.28; master.connect(ac.destination);
     }
     if(ac.state==='suspended') ac.resume();
   }
-  // 缓释正弦"风+水"低频层
-  function startDrone(){
-    const drone = ac.createOscillator(), dg = ac.createGain();
-    drone.type='sine'; drone.frequency.value=110; dg.gain.value=0.35;
-    const lfo = ac.createOscillator(), lg = ac.createGain();
-    lfo.frequency.value=0.08; lg.gain.value=0.12;
-    lfo.connect(lg).connect(dg.gain); drone.connect(dg).connect(master);
-    drone.start(); lfo.start();
-    // 高频水声（滤波噪声）
-    const len = ac.sampleRate*4, buf = ac.createBuffer(1,len,ac.sampleRate), d = buf.getChannelData(0);
-    for(let i=0;i<len;i++) d[i]=Math.random()*2-1;
-    const src = ac.createBufferSource(); src.buffer=buf; src.loop=true;
-    const f = ac.createBiquadFilter(); f.type='bandpass'; f.frequency.value=800; f.Q.value=0.4;
-    const ng = ac.createGain(); ng.gain.value=0.06;
-    src.connect(f).connect(ng).connect(master); src.start();
-    timerIds.push(()=>{ try{drone.stop();lfo.stop();src.stop();}catch(e){} });
+  function stopAll(){
+    if(chordTimer){ clearTimeout(chordTimer); chordTimer=null; }
+    if(melodyTimer){ clearTimeout(melodyTimer); melodyTimer=null; }
+    timers.forEach(fn=>fn()); timers=[];
   }
-  // 随机鸟鸣：双音小滑音
-  function bird(){
-    if(!playing) return;
+  // 弹一个柔和音符
+  function note(freq, dur, type, vol, when){
     try{
-      const t0=ac.currentTime, f1=1800+Math.random()*1200;
-      const o=ac.createOscillator(), g=ac.createGain();
-      o.type='sine'; o.frequency.setValueAtTime(f1,t0);
-      o.frequency.exponentialRampToValueAtTime(f1*1.4,t0+0.08);
-      o.frequency.exponentialRampToValueAtTime(f1*0.8,t0+0.16);
-      g.gain.setValueAtTime(0.06,t0); g.gain.exponentialRampToValueAtTime(0.001,t0+0.2);
-      o.connect(g).connect(master); o.start(t0); o.stop(t0+0.25);
+      const t0 = when || ac.currentTime;
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = type; o.frequency.value = freq;
+      g.gain.setValueAtTime(0.001, t0);
+      g.gain.linearRampToValueAtTime(vol, t0 + dur*0.15);       // 慢起音
+      g.gain.setValueAtTime(vol, t0 + dur*0.6);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);      // 慢释放
+      o.connect(g).connect(master);
+      o.start(t0); o.stop(t0 + dur + 0.1);
     }catch(e){}
-    setTimeout(bird, 2500+Math.random()*5000);
   }
-  // 偶发水滴
-  function drip(){
+  // 播一个和弦（pad 感：4个正弦叠加 + 低音）
+  function playChord(ch, dur){
+    const t0 = ac.currentTime;
+    ch.freqs.forEach((f,i)=>{
+      note(f, dur*0.95, 'sine', 0.06, t0 + i*0.08);            // 琶音感
+    });
+    note(ch.bass, dur*0.9, 'triangle', 0.10, t0);               // 低音铺底
+  }
+  // 随机五声音阶旋律音
+  function melodyNote(){
     if(!playing) return;
-    try{
-      const t0=ac.currentTime, o=ac.createOscillator(), g=ac.createGain();
-      o.type='sine'; o.frequency.setValueAtTime(600+Math.random()*400,t0);
-      o.frequency.exponentialRampToValueAtTime(200,t0+0.12);
-      g.gain.setValueAtTime(0.08,t0); g.gain.exponentialRampToValueAtTime(0.001,t0+0.15);
-      o.connect(g).connect(master); o.start(t0); o.stop(t0+0.2);
-    }catch(e){}
-    setTimeout(drip, 4000+Math.random()*8000);
+    const f = SCALE[Math.floor(Math.random()*SCALE.length)];
+    const dur = 0.8 + Math.random()*1.2;
+    note(f, dur, 'triangle', 0.05);
+    // 偶尔加个八度装饰
+    if(Math.random()<0.2) note(f*2, dur*0.6, 'sine', 0.03, ac.currentTime+0.15);
+    melodyTimer = setTimeout(melodyNote, 1200 + Math.random()*2200);
+  }
+  // 和弦循环
+  function chordLoop(){
+    if(!playing) return;
+    playChord(CHORDS[chordIdx % CHORDS.length], 4.0);
+    chordIdx++;
+    chordTimer = setTimeout(chordLoop, 3600);   // 微重叠，不生硬
   }
   return {
     toggle(){
       if(playing){ this.stop(); return false; }
-      ensureCtx(); playing=true; startDrone(); bird(); drip();
+      ensureCtx(); playing = true; chordIdx = 0;
+      chordLoop();
+      setTimeout(melodyNote, 1500);   // 旋律稍后进
       return true;
     },
     stop(){
-      playing=false;
-      timerIds.forEach(fn=>fn()); timerIds=[];
-      if(ac){ ac.close(); ac=null; master=null; }
+      playing = false; stopAll();
+      if(ac){ ac.close().catch(()=>{}); ac=null; master=null; }
     },
     get playing(){ return playing; }
   };
@@ -559,24 +572,22 @@ const Lake = {
       c.fill();
       c.strokeStyle = sel ? 'rgba(255,210,80,0.9)' : 'rgba(255,255,255,0.35)';
       c.lineWidth = sel?2.5:1.5; c.setLineDash(sel?[]:[6,6]); c.stroke(); c.setLineDash([]);
-      // v0.7.4 名牌：胶囊底 + 名字 + 星标，放钓点侧边不挡漂/线
+      // v0.7.5 名牌：放回钓点上方，高到不挡「露5目」和漂
       c.font = '700 14px sans-serif'; c.textAlign='center';
       const nw = Math.max(c.measureText(s.name).width, 56) + 22;
-      const side = sx < W*0.5 ? 1 : -1;
-      const px = sx + side*(52 + 12 + nw/2);
       c.fillStyle = sel ? 'rgba(14,34,46,0.88)' : 'rgba(8,22,32,0.55)';
-      c.beginPath(); c.roundRect(px-nw/2, sy-24, nw, 48, 12); c.fill();
+      c.beginPath(); c.roundRect(sx-nw/2, sy-132, nw, 44, 12); c.fill();
       c.strokeStyle = sel ? '#ffd250' : 'rgba(255,255,255,0.35)';
       c.lineWidth = sel ? 2 : 1; c.stroke();
       c.fillStyle = sel ? '#ffd250' : 'rgba(255,255,255,0.88)';
-      c.fillText(s.name, px, sy-4);
+      c.fillText(s.name, sx, sy-114);
       c.font = '600 13px sans-serif';
       c.fillStyle = '#ffd250';
-      c.fillText('★'.repeat(s.stars), px, sy+14);
+      c.fillText('★'.repeat(s.stars), sx, sy-97);
       if(sel){
         for(let i=0;i<3;i++){
           const fx = sx + Math.sin(t*0.7+i*2.1)*46;
-          c.beginPath(); c.ellipse(fx, sy+30+i*10, 14-i*2, 5, Math.sin(t+i)*0.2, 0, Math.PI*2);
+          c.beginPath(); c.ellipse(fx, sy+28+i*10, 14-i*2, 5, Math.sin(t+i)*0.2, 0, Math.PI*2);
           c.fillStyle = 'rgba(20,30,36,0.35)'; c.fill();
         }
       }
