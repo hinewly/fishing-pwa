@@ -43,81 +43,114 @@ const AudioSys = (() => {
   };
 })();
 
-/* ================= 背景轻音乐（WebAudio 生成式：和弦进行+五声音阶旋律） ================= */
+/* ================= 背景轻音乐（音乐盒音色·固定旋律·明亮欢快） ================= */
 const AmbientMusic = (() => {
-  let ac=null, master=null, playing=false, timers=[];
-  // 舒缓和弦进行：Cmaj7 → Am7 → Fmaj7 → G(sus4)，每和弦4秒
-  const CHORDS = [
-    { freqs:[130.81, 164.81, 196.00, 246.94], bass:65.41 },   // Cmaj7
-    { freqs:[110.00, 130.81, 164.81, 196.00], bass:55.00 },   // Am7
-    { freqs:[ 87.31, 110.00, 130.81, 174.61], bass:43.65 },   // Fmaj7
-    { freqs:[ 98.00, 123.47, 146.83, 196.00], bass:49.00 },   // G7sus4
+  let ac=null, master=null, playing=false, loopTimer=null;
+  // C大调五声音阶频率表
+  const N = {
+    C4:261.63, D4:293.66, E4:329.63, G4:392.00, A4:440.00,
+    C5:523.25, D5:587.33, E5:659.25, G5:784.00, A5:880.00, C6:1046.5,
+    C3:130.81, F3:174.61, G3:196.00, A3:220.00,
+  };
+  // 旋律：[拍位, 音符, 时值(拍), 音量]  4/4拍，72BPM
+  // 像八音盒/卡林巴的欢快小调，C大调五声，明亮不沉闷
+  const MELODY = [
+    // 第一句（上扬的问候）
+    [0,  N.E4, 1, .12], [1, N.G4, 1, .12], [2, N.A4, 1.5, .13], [3.5, N.G4, .5, .10],
+    [4,  N.E4, 1, .11], [5, N.D4, 1, .11], [6, N.C4, 2, .12],
+    // 第二句（轻盈的回应）
+    [8,  N.D4, 1, .10], [9, N.E4, 1, .11], [10, N.G4, 1.5, .13], [11.5, N.E4, .5, .10],
+    [12, N.D4, 1, .10], [13, N.C4, 1, .11], [14, N.A3, 2, .12],
+    // 第三句（跳跃到高音区，明亮！）
+    [16, N.E4, 1, .11], [17, N.G4, 1, .12], [18, N.A4, 1, .12], [19, N.C5, 1, .14],
+    [20, N.A4, 1, .12], [21, N.G4, 1, .12], [22, N.E4, 2, .11],
+    // 第四句（温柔收尾+小回音）
+    [24, N.G4, 1, .11], [25, N.E4, 1, .10], [26, N.D4, 1, .10], [27, N.C4, 1, .11],
+    [28, N.C5, .5, .09], [28.5, N.A4, .5, .09], [29, N.G4, .5, .09], [29.5, N.E4, .5, .08],
+    [30, N.C4, 2, .12],
   ];
-  // C大调五声音阶（两个八度）
-  const SCALE = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 784.00, 880.00];
-  let chordIdx = 0, chordTimer = null, melodyTimer = null;
+  // 伴奏：低音+分解和弦（很轻，铺底用）
+  const CHORD_BASS = [
+    [0, N.C3], [4, N.A3], [8, N.F3], [12, N.G3],
+    [16, N.C3], [20, N.A3], [24, N.F3], [28, N.G3],
+  ];
+  const ARPEGGIO = [
+    // 每拍后半拍轻点一个和弦音，像风铃
+    [0.5, N.G4], [1.5, N.E4], [2.5, N.G4], [3.5, N.E4],
+    [4.5, N.G4], [5.5, N.E4], [6.5, N.G4], [7.5, N.E4],
+    [8.5, N.A4], [9.5, N.E4], [10.5, N.A4], [11.5, N.E4],
+    [12.5, N.A4], [13.5, N.C4], [14.5, N.A4], [15.5, N.C4],
+    [16.5, N.G4], [17.5, N.E4], [18.5, N.G4], [19.5, N.C5],
+    [20.5, N.G4], [21.5, N.E4], [22.5, N.G4], [23.5, N.E4],
+    [24.5, N.A4], [25.5, N.E4], [26.5, N.D4], [27.5, N.E4],
+    [28.5, N.G4], [29.5, N.E4], [30.5, N.G4], [31.5, N.E4],
+  ];
+  const BPM = 72, SPB = 60/BPM, TOTAL_BEATS = 32;
 
   function ensureCtx(){
     if(!ac){
       ac = new (window.AudioContext||window.webkitAudioContext)();
-      master = ac.createGain(); master.gain.value = 0.28; master.connect(ac.destination);
+      master = ac.createGain(); master.gain.value = 0.32; master.connect(ac.destination);
     }
     if(ac.state==='suspended') ac.resume();
   }
-  function stopAll(){
-    if(chordTimer){ clearTimeout(chordTimer); chordTimer=null; }
-    if(melodyTimer){ clearTimeout(melodyTimer); melodyTimer=null; }
-    timers.forEach(fn=>fn()); timers=[];
-  }
-  // 弹一个柔和音符
-  function note(freq, dur, type, vol, when){
+  // 音乐盒/卡林巴音色：快攻+指数衰减，加一个高八度泛音增加亮度
+  function pluck(freq, dur, vol, when){
     try{
-      const t0 = when || ac.currentTime;
+      const t0 = when;
+      // 主音
       const o = ac.createOscillator(), g = ac.createGain();
-      o.type = type; o.frequency.value = freq;
-      g.gain.setValueAtTime(0.001, t0);
-      g.gain.linearRampToValueAtTime(vol, t0 + dur*0.15);       // 慢起音
-      g.gain.setValueAtTime(vol, t0 + dur*0.6);
-      g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);      // 慢释放
-      o.connect(g).connect(master);
-      o.start(t0); o.stop(t0 + dur + 0.1);
+      o.type = 'sine'; o.frequency.value = freq;
+      g.gain.setValueAtTime(vol, t0);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+      o.connect(g).connect(master); o.start(t0); o.stop(t0+dur+0.05);
+      // 泛音（2倍频，很轻，增加金属质感）
+      const o2 = ac.createOscillator(), g2 = ac.createGain();
+      o2.type = 'sine'; o2.frequency.value = freq*2;
+      g2.gain.setValueAtTime(vol*0.3, t0);
+      g2.gain.exponentialRampToValueAtTime(0.001, t0 + dur*0.5);
+      o2.connect(g2).connect(master); o2.start(t0); o2.stop(t0+dur*0.5+0.05);
     }catch(e){}
   }
-  // 播一个和弦（pad 感：4个正弦叠加 + 低音）
-  function playChord(ch, dur){
-    const t0 = ac.currentTime;
-    ch.freqs.forEach((f,i)=>{
-      note(f, dur*0.95, 'sine', 0.06, t0 + i*0.08);            // 琶音感
-    });
-    note(ch.bass, dur*0.9, 'triangle', 0.10, t0);               // 低音铺底
+  // 播放完整一轮（32拍 ≈ 26.7秒）
+  function playLoop(startTime){
+    const t0 = startTime;
+    // 旋律
+    for(const [beat, freq, dur, vol] of MELODY){
+      pluck(freq, dur*SPB*1.8, vol, t0 + beat*SPB);  // 时值乘1.8让尾音自然延伸
+    }
+    // 低音（柔和，短促）
+    for(const [beat, freq] of CHORD_BASS){
+      try{
+        const when = t0 + beat*SPB;
+        const o = ac.createOscillator(), g = ac.createGain();
+        o.type='triangle'; o.frequency.value = freq;
+        g.gain.setValueAtTime(0.07, when);
+        g.gain.exponentialRampToValueAtTime(0.001, when + SPB*3);
+        o.connect(g).connect(master); o.start(when); o.stop(when+SPB*3+0.1);
+      }catch(e){}
+    }
+    // 分解和弦（风铃感）
+    for(const [beat, freq] of ARPEGGIO){
+      pluck(freq, SPB*1.2, 0.035, t0 + beat*SPB);
+    }
   }
-  // 随机五声音阶旋律音
-  function melodyNote(){
-    if(!playing) return;
-    const f = SCALE[Math.floor(Math.random()*SCALE.length)];
-    const dur = 0.8 + Math.random()*1.2;
-    note(f, dur, 'triangle', 0.05);
-    // 偶尔加个八度装饰
-    if(Math.random()<0.2) note(f*2, dur*0.6, 'sine', 0.03, ac.currentTime+0.15);
-    melodyTimer = setTimeout(melodyNote, 1200 + Math.random()*2200);
-  }
-  // 和弦循环
-  function chordLoop(){
-    if(!playing) return;
-    playChord(CHORDS[chordIdx % CHORDS.length], 4.0);
-    chordIdx++;
-    chordTimer = setTimeout(chordLoop, 3600);   // 微重叠，不生硬
+  function scheduleLoop(){
+    if(!playing || !ac) return;
+    const now = ac.currentTime;
+    playLoop(now + 0.1);
+    loopTimer = setTimeout(scheduleLoop, TOTAL_BEATS*SPB*1000 - 200);  // 稍提前接续
   }
   return {
     toggle(){
       if(playing){ this.stop(); return false; }
-      ensureCtx(); playing = true; chordIdx = 0;
-      chordLoop();
-      setTimeout(melodyNote, 1500);   // 旋律稍后进
+      ensureCtx(); playing = true;
+      scheduleLoop();
       return true;
     },
     stop(){
-      playing = false; stopAll();
+      playing = false;
+      if(loopTimer){ clearTimeout(loopTimer); loopTimer=null; }
       if(ac){ ac.close().catch(()=>{}); ac=null; master=null; }
     },
     get playing(){ return playing; }
