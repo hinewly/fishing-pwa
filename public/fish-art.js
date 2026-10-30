@@ -33,10 +33,10 @@ function drawFishArt(ctx, id, len, t = 0, opts = {}) {
   const dark = !!opts.silhouette;
   const uw = !!opts.underwater;
   // 水下模式：所有体色向水色偏移 55%
-  const finC = dark ? null : (uw ? _mixRGB(a.fin,0.55).join(',') : a.fin.join(','));
-  const topC = dark ? null : (uw ? _mixRGB(a.top,0.55) : a.top);
-  const bellyC = dark ? null : (uw ? _mixRGB(a.belly,0.55) : a.belly);
-  const pcC = a.pc ? (uw ? _mixRGB(a.pc,0.55).join(',') : a.pc.join(',')) : '0,0,0';
+  const finC = dark ? null : (uw ? _mixRGB(a.fin,0.38).join(',') : a.fin.join(','));
+  const topC = dark ? null : (uw ? _mixRGB(a.top,0.38) : a.top);
+  const bellyC = dark ? null : (uw ? _mixRGB(a.belly,0.38) : a.belly);
+  const pcC = a.pc ? (uw ? _mixRGB(a.pc,0.38).join(',') : a.pc.join(',')) : '0,0,0';
   const breath = Math.sin(t*3.2)*0.02;          // 呼吸体缩放
   const gill = Math.sin(t*3.4)*0.5 + 0.5;       // 鳃盖开合相位 0..1
 
@@ -171,7 +171,7 @@ function drawFishArt(ctx, id, len, t = 0, opts = {}) {
     ctx.stroke();
     // 眼睛
     const ex = noseX + L*a.head*0.45, ey = -H*0.20, er = Math.max(1.8, L*0.017);
-    const scleraC = uw ? `rgb(${_mixRGB([201,204,208],0.55).join(',')})` : '#c9ccd0';
+    const scleraC = uw ? `rgb(${_mixRGB([201,204,208],0.38).join(',')})` : '#c9ccd0';
     ctx.beginPath(); ctx.arc(ex, ey, er*1.18, 0, Math.PI*2); ctx.fillStyle = scleraC; ctx.fill();
     ctx.beginPath(); ctx.arc(ex, ey, er, 0, Math.PI*2); ctx.fillStyle = '#1b2226'; ctx.fill();
     ctx.beginPath(); ctx.arc(ex - er*0.28, ey - er*0.30, er*0.22, 0, Math.PI*2); ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fill();
@@ -211,7 +211,7 @@ function drawFishArt(ctx, id, len, t = 0, opts = {}) {
 }
 
 /* 渔获展示：把鱼画在指定 canvas 上（带呼吸/摆尾动画由调用方 requestAnimationFrame 驱动） */
-function renderCatchCanvas(canvas, id, t){
+function renderCatchCanvas(canvas, id, t, weight = 0){
   const dpr = window.devicePixelRatio || 1;
   const w = canvas.clientWidth, h = canvas.clientHeight;
   if(canvas.width !== w*dpr){ canvas.width = w*dpr; canvas.height = h*dpr; }
@@ -220,7 +220,7 @@ function renderCatchCanvas(canvas, id, t){
   ctx.clearRect(0,0,w,h);
   ctx.save();
   ctx.translate(w*0.52, h*0.55);
-  const len = Math.min(w*0.82, 420);
+  const len = Math.max(90, Math.min(90 + weight*34, w*0.82, 420));   // v0.7.0 按实际重量缩放
   ctx.rotate(Math.sin(t*1.2)*0.02);
   drawFishArt(ctx, id, len, t);
   ctx.restore();

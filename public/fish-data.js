@@ -22,24 +22,31 @@ const FISH_SPECIES = [
 const RARITY_INFO = { 1:{label:'普通',color:'#9aa5b1',stars:'★'}, 2:{label:'稀有',color:'#4fb3ff',stars:'★★'}, 3:{label:'传说',color:'#ffb02e',stars:'★★★'} };
 
 function rollFish(spot, mode){
-  const pool = FISH_SPECIES.filter(f=>f.spots.includes(spot.id));
+  let pool = FISH_SPECIES.filter(f=>f.spots.includes(spot.id));
   const diff = spot.diff || 2;
-  // 权重：普通 10 / 稀有 3 / 传说 1；路亚攻击鱼 ×5；难度调节稀有度
+  // v0.7.0 分区鱼情：浅滩全小鱼(≤2斤) / 深水3斤+ / 水草巨物(4斤+)
+  if(diff===1) pool = pool.filter(f=>f.wMax<=2);
+  if(diff===2) pool = pool.filter(f=>f.wMax>=3);
+  if(diff===3) pool = pool.filter(f=>f.wMax>=4);
+  // 权重：普通 10 / 稀有 3 / 传说 1；路亚攻击鱼 ×5；水草区大物概率大增
   const weights = pool.map(f => {
     let w = f.rarity===1?10:(f.rarity===2?3:1);
     if(mode==='lure' && (f.behaviors.includes('dash')||f.behaviors.includes('wash')||f.behaviors.includes('teeth'))) w *= 5;
-    if(diff===1){ w = f.rarity===1?12:(f.rarity===2?1:0); }        // 简单：几乎全小鱼
-    if(diff===3){ if(f.rarity===2) w*=4; if(f.rarity===3) w*=3; }  // 挑战：大物概率大增
+    if(diff===3){ if(f.rarity===2) w*=4; if(f.rarity===3) w*=3; }
     return w;
   });
   let total = weights.reduce((a,b)=>a+b,0), r = Math.random()*total, pick = pool[0];
   for(let i=0;i<pool.length;i++){ r -= weights[i]; if(r<=0){ pick = pool[i]; break; } }
-  // 个体重量：难度越低越偏小
-  const rr = Math.pow(Math.random(), diff===1?3.2:diff===3?1.3:1.8);
-  const weight = +(pick.wMin + (pick.wMax-pick.wMin)*rr).toFixed(2);
+  // 个体重量：浅滩≤1kg / 深水≥1.5kg(3斤+) / 水草≥2kg(4斤+)
+  const rr = Math.pow(Math.random(), diff===1?2.6:diff===3?1.15:1.25);
+  let weight = pick.wMin + (pick.wMax-pick.wMin)*rr;
+  if(diff===1) weight = Math.min(weight, 1.0);
+  if(diff===2) weight = Math.max(weight, 1.5);
+  if(diff===3) weight = Math.max(weight, 2.0);
+  weight = +Math.min(weight, pick.wMax).toFixed(2);
   const wr = (weight - pick.wMin)/(pick.wMax-pick.wMin || 1);
   let strength = Math.min(1, wr*0.7 + Math.random()*0.3);
-  if(diff===1) strength = Math.min(strength, 0.5);   // 简单：个体都好对付
-  if(diff===3) strength = Math.max(strength, 0.3);   // 挑战：没有白给的
+  if(diff===1) strength = Math.min(strength, 0.5);   // 小鱼个体都好对付
+  if(diff===3) strength = Math.max(strength, 0.3);   // 巨物池没有白给的
   return { species:pick, weight, strength, diff };
 }

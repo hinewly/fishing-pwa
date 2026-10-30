@@ -64,6 +64,8 @@ const Store = {
     const isNew = !d.counts[fish.species.id];
     d.counts[fish.species.id] = (d.counts[fish.species.id]||0) + 1;
     if(isNew) d.firsts.push(fish.species.id);
+    d.records = d.records || [];
+    d.records.push({ s: fish.species.id, w: fish.weight, t: Date.now() });
     this.save(d);
     return isNew;
   },
@@ -197,9 +199,9 @@ function drawShoreAngler(c, W, H, t, lake){
 
 /* ================= 湖面场景 ================= */
 const SPOTS = [
-  { id:'shallow', name:'浅滩 ⭐',     diff:1, x:.22, y:.52, tip:'难度⭐ 小鱼多、咬口快，新手练手' },
-  { id:'deep',    name:'深水区 ⭐⭐',  diff:2, x:.52, y:.42, tip:'难度⭐⭐ 进阶，大物出没考验遛鱼' },
-  { id:'weed',    name:'水草区 ⭐⭐⭐', diff:3, x:.80, y:.58, tip:'难度⭐⭐⭐ 挑战，黑鱼猛口大鱼多' },
+  { id:'shallow', name:'浅滩',   diff:1, x:.22, y:.52, tip:'小鱼池：全是2斤内的小鱼，咬口快，提竿就上' },
+  { id:'deep',    name:'深水区', diff:2, x:.52, y:.42, tip:'大鱼池：3斤起步能上十几斤，中鱼后要遛鱼' },
+  { id:'weed',    name:'水草区', diff:3, x:.80, y:.58, tip:'巨物池：4斤+猛鱼出没跑鱼率高，考验技术' },
 ];
 
 const Lake = {
@@ -436,10 +438,7 @@ const Lake = {
       c.lineWidth = sel?2.5:1.5; c.setLineDash(sel?[]:[6,6]); c.stroke(); c.setLineDash([]);
       c.fillStyle = sel?'#ffd250':'rgba(255,255,255,0.75)';
       c.font = '600 14px sans-serif'; c.textAlign='center';
-      c.fillText(s.name, sx, sy-30);
-      c.font = '600 11px sans-serif';
-      c.fillStyle = s.diff===1 ? '#7ddf8f' : s.diff===2 ? '#ffd250' : '#ff8a6b';
-      c.fillText(s.diff===1?'简单':s.diff===2?'进阶':'困难', sx, sy-14);
+      c.fillText(s.name, sx, sy-22);
       if(sel){
         for(let i=0;i<3;i++){
           const fx = sx + Math.sin(t*0.7+i*2.1)*46;
@@ -648,6 +647,14 @@ const Fight = {
     this.pMul      = D===1 ? 1.5 : D===3 ? 0.9 : 1.05;   // 收线进度倍率（搏鱼更短）
     this.evMul     = D===1 ? 0.4 : D===3 ? 1.2 : 0.8;    // 大鱼动作概率（减少）
     this.snagLimit = D===1 ? 2.4 : 1.7;
+    // v0.7.0 小鱼(≤2斤)不用遛鱼：轻松拉上来零失败，也不进抄网QTE
+    this.small = fish.weight <= 1.0;
+    if(this.small){
+      this.redLimit = 1e9; this.slackLimit = 1e9; this.snagLimit = 1e9;
+      this.tMul = 0.15; this.pMul = 3.0; this.evMul = 0;
+      this.F.nextDash = 1e9;
+      $('#fight-msg').textContent = '小鱼！直接拉上来～';
+    }
     this.phase = 'fight'; this.holding = false;
     $('#screen-lake').classList.remove('active');
     $('#screen-fight').classList.add('active');
@@ -768,7 +775,8 @@ const Fight = {
     } else {
       f.tension -= (40 + (100-f.tension)*0.2)*dt;
       f.stamina -= dt*(0.028+0.028*S);
-      f.progress -= dt*(0.010*S)*(f.dash?2.5:1);
+      if(this.small){ f.progress += dt*0.3; }
+      else { f.progress -= dt*(0.010*S)*(f.dash?2.5:1); }
     }
     f.tension = clamp(f.tension, 0, 100);
     f.stamina = clamp(f.stamina, 0, 1);
@@ -811,6 +819,7 @@ const Fight = {
       }
     }
     if(f.progress >= 1 && this.phase==='fight'){
+      if(this.small){ this.finish(true, null); return; }
       this.phase = 'net'; f.netT = 0;
       $('#btn-reel').classList.add('hidden');
       $('#btn-net').classList.remove('hidden');
@@ -835,7 +844,7 @@ const Fight = {
     const fishY = H*(0.52 - 0.26*surfR*surfR) + Math.sin(f.t*2.2)*30 + (f.dash?Math.sin(f.t*9)*14:0);
     const fishX = W*(0.78 - f.progress*0.6) + Math.sin(f.t*3.1)*26*(1+f.fish.strength);
     const yy = f.snag ? Math.min(H*0.86, fishY*1.25) : fishY;
-    const size = 60 + f.fish.weight*7 + f.fish.strength*50;
+    const size = Math.min(46 + f.fish.weight*20, W*0.55, H*0.45);   // v0.7.0 2斤小鱼 vs 20斤巨物体型差6倍
     c.save();
     c.translate(fishX, yy);
     c.rotate(Math.sin(f.t*2.6)*0.14*(1+f.fish.strength*0.6) + (f.dash?-0.2:0) + (f.stamina<=0 ? Math.sin(f.t*4.5)*0.3 : 0));
@@ -937,6 +946,22 @@ const GamepadFx = {
 function renderLog(){
   const d = Store.load(), list = $('#log-list');
   list.innerHTML = '';
+  const recs = d.records || [];
+  const maxW = {};
+  for(const r of recs){ maxW[r.s] = Math.max(maxW[r.s]||0, r.w); }
+  // v0.7.0 总数统计：累计/今日 条数+斤数+最大个体
+  if(recs.length){
+    const t0 = new Date(); t0.setHours(0,0,0,0);
+    const today = recs.filter(r=>r.t >= t0.getTime());
+    const sumW = a => a.reduce((x,r)=>x+r.w, 0);
+    const big = recs.reduce((a,r)=> !a || r.w>a.w ? r : a, null);
+    const stats = document.createElement('div');
+    stats.className = 'log-stats';
+    stats.innerHTML = '<div class="st1">🏆 累计 '+recs.length+' 条 · '+(sumW(recs)*2).toFixed(1)+' 斤</div>'
+      + '<div class="st2">📅 今日 '+today.length+' 条 · '+(sumW(today)*2).toFixed(1)+' 斤'
+      + '　🥇 最大 '+FISH_SPECIES.find(f=>f.id===big.s).name+' '+(big.w*2).toFixed(1)+' 斤</div>';
+    list.appendChild(stats);
+  }
   const rows = FISH_SPECIES.map(sp => ({ sp, n:d.counts[sp.id]||0 })).sort((a,b)=>b.n-a.n);
   let total = 0;
   for(const {sp,n} of rows){
@@ -957,7 +982,7 @@ function renderLog(){
     row.appendChild(name);
     const cnt = document.createElement('span');
     cnt.className = 'cnt';
-    cnt.textContent = n>0 ? '× '+n : '—';
+    cnt.textContent = n>0 ? '× '+n+' · 最大 '+(maxW[sp.id]*2).toFixed(1)+' 斤' : '—';
     row.appendChild(cnt);
     list.appendChild(row);
   }
@@ -1042,13 +1067,14 @@ const Game = {
     $('#catch-new').classList.toggle('hidden', !isNew);
     $('#catch-name').innerHTML = fish.species.name+' <span class="stars">'+RARITY_INFO[fish.species.rarity].stars+'</span>';
     $('#catch-name').style.color = RARITY_INFO[fish.species.rarity].color;
-    $('#catch-weight').textContent = fish.weight+' kg'+(fish.weight>=8?' 🏆 巨物！':fish.weight>=3?' 大鱼！':'');
+    const jin = fish.weight*2;
+    $('#catch-weight').textContent = jin.toFixed(1)+' 斤'+(jin>=16?' 🏆 巨物！':jin>=6?' 🎣 大鱼！':jin>=3?' 好个体！':'');
     $('#catch-flavor').textContent = FLAVOR[fish.species.id]||'';
     showPopup('#popup-catch');
     const cv = $('#catch-canvas');
     const anim = ()=>{
       if($('#popup-catch').classList.contains('hidden')) return;
-      renderCatchCanvas(cv, fish.species.id, performance.now()/1000);
+      renderCatchCanvas(cv, fish.species.id, performance.now()/1000, fish.weight);
       this.catchRaf = requestAnimationFrame(anim);
     };
     cancelAnimationFrame(this.catchRaf);

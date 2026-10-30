@@ -1,8 +1,8 @@
-/* fishing-pwa 离线缓存 v10
+/* fishing-pwa 离线缓存 v11
  * HTML(导航请求)：网络优先（no-cache 强制校验新鲜度），离线回退缓存
  * 其余资源：缓存优先（版本随 CACHE 递增整体换新）
  */
-const CACHE = 'fishing-v10';
+const CACHE = 'fishing-v11';
 const ASSETS = ['./','index.html','style.css','fish-data.js','fish-art.js','game.js','manifest.json','icons/icon-192.png','icons/icon-512.png','icons/apple-touch-icon.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())); });

@@ -1,6 +1,6 @@
 # 钓鱼·湖畔 首版构建 交接
 
-- last_updated: 2026-10-30 11:40
+- last_updated: 2026-10-30 12:30
 - status: active
 - version: v0.6.0
 
@@ -13,6 +13,7 @@
 v0.1.0 可玩 Demo 本地完成并通过无头浏览器全流程实测（选位→抛竿→等口→刺鱼→搏鱼→抄网→入护→渔获清单），页面零报错。**未部署**，等用户试玩确认手感后再走部署流程。
 
 ## 最近完成
+- v0.7.0（用户六条反馈+钓法分层大改）：①钓位改「鱼池」概念，湖面删掉简单/进阶/困难文字（难度说明挪进帮助）：浅滩=小鱼池(鱼种池只剩鲫鱼/罗非，全部≤2斤) / 深水区=大鱼池(鱼种池只留3斤+的鲢鳙鲤翘鲶青) / 水草区=巨物池(只留4斤+的草黑鳜鲶鲤) ②小鱼(≤2斤/1kg)取消遛鱼：零失败自动拉上来~2秒直接入护，跳过抄网QTE（Fight.small，注意 nextDash 要写 this.F.nextDash）③搏鱼画面鱼体积=46+weight*20（2斤 vs 20斤差6倍，clamp屏宽55%/屏高45%）④渔获弹窗鱼也按重量缩放（renderCatchCanvas 加 weight 参数，len=90+weight*34）⑤重量单位全改「斤」(内部存kg×2显示)，弹窗徽标阈值改斤(16斤巨物/6斤大鱼/3斤好个体) ⑥水下鱼色彩混合0.55→0.38（鲤鱼金棕/草鱼草绿肉眼可辨）⑦渔获清单统计卡：累计条数+斤数/今日/最大个体，每行加「最大 X 斤」（Store 加 records 数组 {s,w,t}）⑧SW v11
 - v0.6.3（主屏幕 PWA 体验补全）：①生成应用图标（Canvas 矢量鲤鱼+钓钩+气泡，public/icons/ 三尺寸 192/512/apple 180，自绘不违反零素材约定）②manifest icons 配齐(含 maskable)+display 改 standalone ③index.html 加 apple-touch-icon + apple-mobile-web-app-* meta ④图标入 SW 缓存，CACHE v10
 - v0.6.2（用户反馈：iPad 上刷新按钮没反应）：①刷新按钮从 location.reload() 改为 location.replace('./?r='+时间戳)——iOS 主屏PWA模式下 reload 可能无效（已知毛病），真实跳转必然生效且顺带绕过 HTML 缓存 ②点击改事件委托（防 JS 时序问题丢监听）③SW 缓存 v9 ④用 WebKit(Safari内核)+iPad触屏模拟验证线上：按钮位置/遮挡/触摸全通过；注意 Playwright 需 playwright install webkit
 - v0.6.1（用户反馈：线上用户拿不到新版本）：①顶栏加 🔄 刷新按钮（用户拍板：手动刷新比自动 reload 好，自动 reload 会在搏鱼对局中打断丢鱼）②SW 策略改进：HTML 导航请求改网络优先（no-cache 强制校验，离线回退缓存）、每次页面加载 reg.update() 强制检查更新（浏览器默认24h才查一次）、新版本装好后 toast 提示「点右上角 🔄」③踩坑记录：SW 内 fetch(e.request) 对 navigate 模式请求会抛 TypeError，必须 new Request(e.request.url) 重建；本地 python http.server 无 Cache-Control 头会启发式缓存干扰测试；测试一律用副本目录，别在真实 public/ 上边测边 git checkout 还原（曾把写好的 sw.js 清空/回滚）
