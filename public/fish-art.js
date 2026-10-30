@@ -1,6 +1,9 @@
 /* 鱼类半写实 Canvas 绘制 —— fishing-pwa
- * drawFishArt(ctx, id, len, t) ：在当前原点画一条朝左的鱼，len 为体长(px)，t 为动画时间(s)
+ * drawFishArt(ctx, id, len, t, opts) ：在当前原点画一条朝左的鱼，len 为体长(px)，t 为动画时间(s)
  * 半写实风格：渐变体色 + 真实体形/鳍形 + 种类花纹，不做卡通化
+ * opts.underwater : 水下模式 —— 体色压暗并向水色偏移，保留花纹/眼/鳃细节（搏鱼画面用）
+ * opts.silhouette : 剪影模式 —— 纯深色形状（渔获清单未解锁占位用）
+ * v0.6.0 微动作：呼吸体缩放 / 鳃盖开合 / 嘴张合 / 胸鳍划水 / 尾鳍摆动
  */
 const FISH_ART = {
   jiyu:      { top:[120,132,140], belly:[225,228,225], fin:[150,160,168], hf:.34, head:.30, tail:.22, pattern:'scale', pc:[92,102,110], dorsal:'mid', forked:.5 },
@@ -17,12 +20,25 @@ const FISH_ART = {
   qingyu:    { top:[52,60,72],    belly:[198,204,212], fin:[80,92,106],   hf:.30, head:.30, tail:.22, pattern:'none',   dorsal:'mid', forked:.5 },
 };
 
+const _WATER_RGB = [26, 66, 90];
+function _mixRGB(c, k){
+  return c.map((v,i)=>Math.round(v*(1-k)+_WATER_RGB[i]*k));
+}
+
 function drawFishArt(ctx, id, len, t = 0, opts = {}) {
   const a = FISH_ART[id] || FISH_ART.jiyu;
   const sway = Math.sin(t * 6) * 0.10;
   const L = len, hf = a.hf, H = L * hf;
   const noseX = -L/2, tailX = L/2 - L*a.tail;
-  const dark = opts.silhouette;
+  const dark = !!opts.silhouette;
+  const uw = !!opts.underwater;
+  // 水下模式：所有体色向水色偏移 55%
+  const finC = dark ? null : (uw ? _mixRGB(a.fin,0.55).join(',') : a.fin.join(','));
+  const topC = dark ? null : (uw ? _mixRGB(a.top,0.55) : a.top);
+  const bellyC = dark ? null : (uw ? _mixRGB(a.belly,0.55) : a.belly);
+  const pcC = a.pc ? (uw ? _mixRGB(a.pc,0.55).join(',') : a.pc.join(',')) : '0,0,0';
+  const breath = Math.sin(t*3.2)*0.02;          // 呼吸体缩放
+  const gill = Math.sin(t*3.4)*0.5 + 0.5;       // 鳃盖开合相位 0..1
 
   function bodyPath(){
     ctx.beginPath();
@@ -35,10 +51,9 @@ function drawFishArt(ctx, id, len, t = 0, opts = {}) {
     ctx.closePath();
   }
 
-  // —— 尾鳍（叉尾）——
-  const swayA = sway;
+  // —— 尾鳍（叉尾，摆动）——
   ctx.save();
-  ctx.translate(tailX, 0); ctx.rotate(swayA);
+  ctx.translate(tailX, 0); ctx.rotate(sway);
   ctx.beginPath();
   ctx.moveTo(0, 0);
   const tf = a.forked ?? .5, TL = L*a.tail*1.15;
@@ -47,9 +62,13 @@ function drawFishArt(ctx, id, len, t = 0, opts = {}) {
   ctx.quadraticCurveTo(TL*0.55, H*0.05, TL, H*(0.55*tf+0.25));
   ctx.quadraticCurveTo(TL*0.5, H*0.3, 0, 0);
   ctx.closePath();
-  const tg = ctx.createLinearGradient(0,0,TL,0);
-  tg.addColorStop(0, `rgba(${a.fin},0.9)`); tg.addColorStop(1, `rgba(${a.fin},0.45)`);
-  ctx.fillStyle = dark ? 'rgba(30,40,48,0.85)' : tg;
+  if(dark){
+    ctx.fillStyle = 'rgba(30,40,48,0.85)';
+  } else {
+    const tg = ctx.createLinearGradient(0,0,TL,0);
+    tg.addColorStop(0, `rgba(${finC},0.9)`); tg.addColorStop(1, `rgba(${finC},0.45)`);
+    ctx.fillStyle = tg;
+  }
   ctx.fill();
   ctx.restore();
 
@@ -69,9 +88,9 @@ function drawFishArt(ctx, id, len, t = 0, opts = {}) {
       ctx.quadraticCurveTo(L*0.10, -H*1.05, L*0.20, -H*0.30);
     }
     ctx.closePath();
-    ctx.fillStyle = `rgba(${a.fin},0.85)`;
+    ctx.fillStyle = `rgba(${finC},0.85)`;
     ctx.fill();
-    ctx.strokeStyle = 'rgba(0,0,0,0.18)'; ctx.lineWidth = Math.max(0.6, L*0.004);
+    ctx.strokeStyle = uw ? 'rgba(0,10,16,0.22)' : 'rgba(0,0,0,0.18)'; ctx.lineWidth = Math.max(0.6, L*0.004);
     for(let i=1;i<5;i++){
       const t0 = i/5;
       ctx.beginPath(); ctx.moveTo(-L*0.06 + L*0.26*t0, -H*0.62);
@@ -80,39 +99,42 @@ function drawFishArt(ctx, id, len, t = 0, opts = {}) {
     }
   }
 
-  // —— 身体 ——
-  bodyPath();
+  // —— 身体（呼吸缩放）+ 侧线 + 花纹 + 头部细节 ——
   if(dark){
+    bodyPath();
     ctx.fillStyle = 'rgba(24,34,42,0.9)';
     ctx.fill();
   } else {
+    ctx.save();
+    ctx.scale(1, 1 + breath);
+    bodyPath();
     const bg = ctx.createLinearGradient(0, -H*0.8, 0, H*0.6);
-    bg.addColorStop(0, `rgb(${a.top.map(v=>Math.round(v*0.82)).join(',')})`);
-    bg.addColorStop(0.42, `rgb(${a.top.join(',')})`);
-    bg.addColorStop(0.68, `rgb(${a.top.map((v,i)=>Math.round(v*0.55 + a.belly[i]*0.45)).join(',')})`);
-    bg.addColorStop(1, `rgb(${a.belly.join(',')})`);
+    bg.addColorStop(0, `rgb(${topC.map(v=>Math.round(v*0.82)).join(',')})`);
+    bg.addColorStop(0.42, `rgb(${topC.join(',')})`);
+    bg.addColorStop(0.68, `rgb(${topC.map((v,i)=>Math.round(v*0.55 + bellyC[i]*0.45)).join(',')})`);
+    bg.addColorStop(1, `rgb(${bellyC.join(',')})`);
     ctx.fillStyle = bg; ctx.fill();
 
-    // 侧线高光
+    // 侧线高光 + 背部压暗（水下减淡）
     ctx.save(); ctx.clip();
     const hl = ctx.createLinearGradient(0, -H*0.35, 0, H*0.1);
-    hl.addColorStop(0,'rgba(255,255,255,0.16)'); hl.addColorStop(1,'rgba(255,255,255,0)');
+    hl.addColorStop(0, uw?'rgba(255,255,255,0.10)':'rgba(255,255,255,0.16)'); hl.addColorStop(1,'rgba(255,255,255,0)');
     ctx.fillStyle = hl; ctx.fillRect(noseX, -H*0.4, L, H*0.5);
     const dk = ctx.createLinearGradient(0, -H*0.8, 0, -H*0.1);
-    dk.addColorStop(0,'rgba(0,0,0,0.30)'); dk.addColorStop(1,'rgba(0,0,0,0)');
+    dk.addColorStop(0, uw?'rgba(0,10,18,0.20)':'rgba(0,0,0,0.30)'); dk.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle = dk; ctx.fillRect(noseX, -H*0.8, L, H*0.7);
 
     // —— 花纹 ——
     ctx.globalAlpha = 0.55;
     if(a.pattern==='stripes'){
-      ctx.strokeStyle = `rgb(${a.pc.join(',')})`; ctx.lineWidth = Math.max(1.2, H*0.07);
+      ctx.strokeStyle = `rgb(${pcC})`; ctx.lineWidth = Math.max(1.2, H*0.07);
       for(let i=0;i<9;i++){ const px = noseX + L*0.22 + i*L*0.072;
         ctx.beginPath(); ctx.moveTo(px, -H*0.52);
         ctx.quadraticCurveTo(px+L*0.02+Math.sin(i)*L*0.008, 0, px+L*0.01, H*0.44); ctx.stroke(); }
     } else if(a.pattern==='blots'){
       // 大小不一的不规则斑块，沿背侧密、腹侧疏（拟真分布）
       const rng = (()=>{ let seed=7; return ()=>{ seed=(seed*9301+49297)%233280; return seed/233280; }; })();
-      ctx.fillStyle = `rgb(${a.pc.join(',')})`;
+      ctx.fillStyle = `rgb(${pcC})`;
       for(let i=0;i<16;i++){
         const bx = -0.36 + (0.68)*(i/15) + (rng()-0.5)*0.05;
         const by = -0.32 + Math.pow(rng(),0.8)*0.55;
@@ -124,7 +146,7 @@ function drawFishArt(ctx, id, len, t = 0, opts = {}) {
       }
       ctx.globalAlpha = 0.55;
     } else if(a.pattern==='scale'){
-      ctx.strokeStyle = `rgba(${a.pc.join(',')},0.5)`; ctx.lineWidth = Math.max(0.6, L*0.004);
+      ctx.strokeStyle = `rgba(${pcC},0.5)`; ctx.lineWidth = Math.max(0.6, L*0.004);
       for(let cx=noseX+L*0.22; cx<tailX-L*0.05; cx+=L*0.045){
         for(let cy=-H*0.5; cy<H*0.42; cy+=H*0.22){
           ctx.beginPath(); ctx.arc(cx, cy, L*0.022, 0.4, Math.PI-0.4); ctx.stroke();
@@ -132,26 +154,34 @@ function drawFishArt(ctx, id, len, t = 0, opts = {}) {
       }
     }
     ctx.globalAlpha = 1; ctx.restore();
-  }
 
-  // —— 头部细节 ——
-  if(!dark){
-    // 鳃盖
+    // —— 头部细节（水下也保留，压暗处理）——
+    // 鳃盖：主线 + 随呼吸开合的第二线
+    const gOff = L*0.014*gill;
+    ctx.strokeStyle = uw ? 'rgba(0,10,16,0.30)' : 'rgba(0,0,0,0.22)';
+    ctx.lineWidth = Math.max(1, L*0.008);
     ctx.beginPath();
     ctx.moveTo(noseX + L*a.head*0.78, -H*0.52);
     ctx.quadraticCurveTo(noseX + L*a.head*0.95, 0, noseX + L*a.head*0.72, H*0.5);
-    ctx.strokeStyle = 'rgba(0,0,0,0.22)'; ctx.lineWidth = Math.max(1, L*0.008); ctx.stroke();
+    ctx.stroke();
+    ctx.strokeStyle = uw ? 'rgba(0,10,16,0.18)' : 'rgba(0,0,0,0.12)';
+    ctx.beginPath();
+    ctx.moveTo(noseX + L*a.head*0.78 + gOff, -H*0.46);
+    ctx.quadraticCurveTo(noseX + L*a.head*0.95 + gOff, 0, noseX + L*a.head*0.72 + gOff, H*0.44);
+    ctx.stroke();
     // 眼睛
     const ex = noseX + L*a.head*0.45, ey = -H*0.20, er = Math.max(1.8, L*0.017);
-    ctx.beginPath(); ctx.arc(ex, ey, er*1.18, 0, Math.PI*2); ctx.fillStyle = '#c9ccd0'; ctx.fill();
+    const scleraC = uw ? `rgb(${_mixRGB([201,204,208],0.55).join(',')})` : '#c9ccd0';
+    ctx.beginPath(); ctx.arc(ex, ey, er*1.18, 0, Math.PI*2); ctx.fillStyle = scleraC; ctx.fill();
     ctx.beginPath(); ctx.arc(ex, ey, er, 0, Math.PI*2); ctx.fillStyle = '#1b2226'; ctx.fill();
     ctx.beginPath(); ctx.arc(ex - er*0.28, ey - er*0.30, er*0.22, 0, Math.PI*2); ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fill();
-    // 嘴
-    ctx.beginPath(); ctx.moveTo(noseX+L*0.012, H*0.16); ctx.quadraticCurveTo(noseX+L*0.05, H*0.22, noseX+L*0.09, H*0.19);
-    ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = Math.max(1, L*0.007); ctx.stroke();
+    // 嘴（随鳃盖相位微张）
+    const mOpen = H*(0.16 + 0.035*gill);
+    ctx.beginPath(); ctx.moveTo(noseX+L*0.012, mOpen); ctx.quadraticCurveTo(noseX+L*0.05, mOpen+H*0.06, noseX+L*0.09, mOpen+H*0.03);
+    ctx.strokeStyle = uw ? 'rgba(0,10,16,0.42)' : 'rgba(0,0,0,0.35)'; ctx.lineWidth = Math.max(1, L*0.007); ctx.stroke();
     // 鲶鱼/鲤鱼须
     if(a.barbels){
-      ctx.strokeStyle = 'rgba(60,54,44,0.65)'; ctx.lineWidth = Math.max(0.8, L*0.0035);
+      ctx.strokeStyle = uw ? 'rgba(20,26,24,0.55)' : 'rgba(60,54,44,0.65)'; ctx.lineWidth = Math.max(0.8, L*0.0035);
       const mx = noseX + L*0.07;
       [[-0.06,-0.30],[0.02,-0.26],[0.05,-0.20]].forEach(([dx,dy])=>{
         ctx.beginPath(); ctx.moveTo(mx, H*0.16);
@@ -162,18 +192,20 @@ function drawFishArt(ctx, id, len, t = 0, opts = {}) {
     // 鲶鱼扁头 / 黑鱼蛇头 额外头型提示
     if(a.flatHead || a.snakeHead){
       ctx.beginPath(); ctx.ellipse(noseX+L*a.head*0.4, -H*0.1, L*a.head*0.42, H*0.42, 0, 0, Math.PI*2);
-      ctx.strokeStyle = 'rgba(0,0,0,0.12)'; ctx.stroke();
+      ctx.strokeStyle = uw ? 'rgba(0,10,16,0.16)' : 'rgba(0,0,0,0.12)'; ctx.stroke();
     }
+    ctx.restore();
   }
 
-  // —— 胸鳍 ——
+  // —— 胸鳍（划水微动）——
   ctx.save();
-  ctx.translate(noseX + L*a.head*0.85, H*0.28); ctx.rotate(0.5 + sway*0.4);
+  ctx.translate(noseX + L*a.head*0.85, H*0.28);
+  ctx.rotate(0.5 + sway*0.4 + Math.sin(t*5)*0.08);
   ctx.beginPath(); ctx.moveTo(0,0);
   ctx.quadraticCurveTo(L*0.09, H*0.22, L*0.16, H*0.30);
   ctx.quadraticCurveTo(L*0.07, H*0.12, 0, 0);
   ctx.closePath();
-  ctx.fillStyle = dark ? 'rgba(30,40,48,0.85)' : `rgba(${a.fin},0.8)`;
+  ctx.fillStyle = dark ? 'rgba(30,40,48,0.85)' : `rgba(${finC},0.8)`;
   ctx.fill();
   ctx.restore();
 }

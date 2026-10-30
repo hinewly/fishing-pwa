@@ -255,9 +255,9 @@ const Lake = {
         toast('口诀：漂尾露5目，假口顿1目别理，吞2目以上/黑漂/送漂马上提竿！', 4200);
       }
       const diff = this.spot.diff||2;
-      this.biteAt = diff===1 ? rand(2.5,6.5) : diff===3 ? rand(5,13) : rand(4,11);
+      this.biteAt = diff===1 ? rand(2.5,6.5) : diff===3 ? rand(4,10) : rand(3.5,9);
       this.fakes = [];
-      const n = diff===1 ? (Math.random()<0.5?0:1) : 1+Math.floor(Math.random()*2);
+      const n = diff===1 ? (Math.random()<0.6?0:1) : diff===3 ? (Math.random()<0.5?1:2) : (Math.random()<0.55?0:1);
       for(let i=0;i<n;i++) this.fakes.push(rand(1.5, Math.max(2, this.biteAt-1)));
       this.fakes.sort((a,b)=>a-b);
       $('#btn-cast').textContent = '刺鱼！';
@@ -266,8 +266,8 @@ const Lake = {
       this.state='retrieving'; this.retProg=0; this.holding=false;
       this.hookedFish = rollFish(this.spot, 'lure');
       const ldiff = this.spot.diff||2;
-      this.nextAttack = ldiff===1 ? rand(1,2.5) : ldiff===3 ? rand(2.5,5) : rand(1.5,4);
-      this.attackWin = ldiff===1 ? 0.7 : ldiff===3 ? 0.45 : 0.55;
+      this.nextAttack = ldiff===1 ? rand(1,2.5) : ldiff===3 ? rand(2,4.5) : rand(1.2,3.5);
+      this.attackWin = ldiff===1 ? 0.8 : ldiff===3 ? 0.55 : 0.7;
       $('#btn-cast').textContent = '按住收线';
       $('#lake-tip').textContent = '按住收线收饵……停顿一下、轻点一下更诱鱼';
     }
@@ -329,8 +329,8 @@ const Lake = {
         this.hookedFish = rollFish(this.spot, 'tai');
         const S = this.hookedFish.strength;
         const diff = this.hookedFish.diff||2;
-        const base = diff===1 ? 2.0 : diff===3 ? 1.1 : 1.5;
-        this.biteWin = clamp(base - S*0.4, 0.9, base);
+        const base = diff===1 ? 2.6 : diff===3 ? 1.4 : 1.9;
+        this.biteWin = clamp(base - S*0.35, 1.1, base);
         if(this.biteKind==='song'){ this.floatTarget = -2.5; }                        // 送漂
         else if(S > (diff===1 ? 0.9 : 0.72)){ this.floatTarget = 7; }                 // 黑漂（简单级罕见）
         else { this.floatTarget = 2.5 + S*2; }                                        // 顿口
@@ -641,12 +641,13 @@ const Fight = {
       redTime:0, slack:0, fightSec:0, netT:0, _reelT:0, _creakT:0,
     };
     const D = this.F.diff;
-    this.redLimit  = D===1 ? 2.3 : D===3 ? 1.15 : 1.5;   // 红线容忍时长
-    this.slackLimit= D===1 ? 6.5 : D===3 ? 3.5 : 4.5;    // 低张力容忍时长
-    this.tMul      = D===1 ? 0.78 : D===3 ? 1.15 : 1;    // 张力增速倍率
-    this.pMul      = D===1 ? 1.4  : D===3 ? 0.85 : 1;    // 收线进度倍率
-    this.evMul     = D===1 ? 0.45 : D===3 ? 1.3 : 1;     // 大鱼动作概率倍率
-    this.snagLimit = D===1 ? 1.9 : 1.3;
+    // v0.6.0 调参：整体成功率 浅滩~95% / 深水~82% / 水草~70%
+    this.redLimit  = D===1 ? 3.0 : D===3 ? 1.7 : 2.2;    // 红线容忍时长（放宽）
+    this.slackLimit= D===1 ? 8.0 : D===3 ? 4.0 : 5.5;    // 低张力容忍时长（放宽）
+    this.tMul      = D===1 ? 0.7 : D===3 ? 0.95 : 0.85;  // 张力增速倍率（放缓）
+    this.pMul      = D===1 ? 1.5 : D===3 ? 0.9 : 1.05;   // 收线进度倍率（搏鱼更短）
+    this.evMul     = D===1 ? 0.4 : D===3 ? 1.2 : 0.8;    // 大鱼动作概率（减少）
+    this.snagLimit = D===1 ? 2.4 : 1.7;
     this.phase = 'fight'; this.holding = false;
     $('#screen-lake').classList.remove('active');
     $('#screen-fight').classList.add('active');
@@ -666,18 +667,18 @@ const Fight = {
   onSteady(){
     if(this.phase!=='fight' || !this.F || !this.F.wash) return;
     this.F.wash = null;
-    this.F.stamina = Math.max(0, this.F.stamina-0.12);
+    this.F.stamina = Math.max(0, this.F.stamina-0.18);
     this.F.tension = Math.max(10, this.F.tension-25);
     $('#btn-steady').classList.add('hidden');
     $('#fight-msg').textContent = '稳住了！鱼呛了一口水';
     AudioSys.splash();
   },
   netPhase(){ return (this.F.netT * this.netSpeed()) % (2*Math.PI); },
-  netSpeed(){ return 3 + this.F.fish.strength*2.4; },
+  netSpeed(){ return 2.7 + this.F.fish.strength*2.0; },
   inGreen(){
     let d = Math.abs(this.netPhase() - Math.PI);
     if(d > Math.PI) d = 2*Math.PI - d;
-    return d < 0.55;
+    return d < 0.62;
   },
   onNet(){
     if(this.phase!=='net') return;
@@ -705,7 +706,7 @@ const Fight = {
 
     if(this.phase==='net'){
       f.netT += dt;
-      if(f.netT > 7){
+      if(f.netT > 8.5){
         this.finish(false, '最后一秒跑了…', '鱼在岸边挣扎太久，挣脱了钩子。都搏到岸边了，就差那一下。');
         return;
       }
@@ -717,20 +718,20 @@ const Fight = {
       f.nextDash -= dt;
       if(f.nextDash <= 0){
         if(sp.behaviors.includes('deep') && Math.random()<0.4*this.evMul && f.progress>0.3){
-          f.snag = { left: rand(2,4) };
+          f.snag = { left: rand(1.6,3) };
           $('#fight-msg').textContent = '⚠ 鱼钻底了！松线别硬拉！';
         } else if(sp.behaviors.includes('wash') && Math.random()<0.45*this.evMul && f.progress>0.45){
-          f.wash = { left: 0.7 };
+          f.wash = { left: 0.95 };
           $('#btn-steady').classList.remove('hidden');
           $('#fight-msg').textContent = '⚡ 鱼要洗鳃——快点「稳住」！';
           AudioSys.splash();
         } else {
-          f.dash = { left: rand(1.4,2.6) * (0.6+S*0.4) };
+          f.dash = { left: rand(1.2,2.2) * (0.6+S*0.4) };
           $('#fight-msg').textContent = '💥 大鱼冲刺！快松手放线！';
           AudioSys.dash();
           GamepadFx.buzz(0.9, 400);
         }
-        f.nextDash = rand(3.5, 8) * (1.3-S*0.4);
+        f.nextDash = rand(4.5, 9) * (1.4-S*0.4);
       }
     }
     if(f.dash){ f.dash.left -= dt; if(f.dash.left<=0){ f.dash=null; if(!f.snag&&!f.wash) $('#fight-msg').textContent=''; } }
@@ -751,23 +752,23 @@ const Fight = {
     }
 
     // —— 张力 / 体力 / 收线进度 ——
-    let mult = 1 + S*0.75;
-    if(f.dash) mult *= 2.1;
-    if(f.snag) mult *= 1.55;
-    if(tired) mult *= 0.45;
+    let mult = 1 + S*0.7;
+    if(f.dash) mult *= 2.0;
+    if(f.snag) mult *= 1.45;
+    if(tired) mult *= 0.38;
 
     if(this.holding){
-      let dT = (24 + mult*8) * this.tMul;
-      if(f.snag) dT += 30;
+      let dT = (20 + mult*8) * this.tMul;
+      if(f.snag) dT += 20;
       f.tension += dT*dt;
-      f.stamina -= dt*(0.05+0.06*S)*(tired?0.3:1);
-      f.progress += dt*0.14*this.pMul*(0.55+0.45*f.stamina)*(1.25-S*0.75)*(tired?1.7:1);
+      f.stamina -= dt*(0.065+0.07*S)*(tired?0.3:1);
+      f.progress += dt*0.155*this.pMul*(0.55+0.45*f.stamina)*(1.25-S*0.55)*(tired?1.7:1);
       f._reelT += dt;
       if(f._reelT > 0.09){ f._reelT=0; AudioSys.reel(); }
     } else {
       f.tension -= (40 + (100-f.tension)*0.2)*dt;
-      f.stamina -= dt*(0.02+0.022*S);
-      f.progress -= dt*(0.012*S)*(f.dash?3:1);
+      f.stamina -= dt*(0.028+0.028*S);
+      f.progress -= dt*(0.010*S)*(f.dash?2.5:1);
     }
     f.tension = clamp(f.tension, 0, 100);
     f.stamina = clamp(f.stamina, 0, 1);
@@ -784,9 +785,9 @@ const Fight = {
           (f.dash?'大鱼冲刺时你还贪线，':'张力拉满没松手，')+'鱼线崩断，鱼和线组一起没了。张力到红线要立刻松手遛鱼！');
         return;
       }
-    } else { f.redTime = Math.max(0, f.redTime - dt*0.6); }
+    } else { f.redTime = Math.max(0, f.redTime - dt*1.2); }
 
-    if(f.tension < 14 && !f.wash){
+    if(f.tension < 12 && !f.wash){
       f.slack += dt;
       if(f.slack > this.slackLimit){
         this.finish(false, '脱钩跑了', '收线太松，鱼钩在鱼嘴里晃荡太久，松脱了。张力要保持在中区，别一直放着不管。');
@@ -839,7 +840,7 @@ const Fight = {
     c.translate(fishX, yy);
     c.rotate(Math.sin(f.t*2.6)*0.14*(1+f.fish.strength*0.6) + (f.dash?-0.2:0) + (f.stamina<=0 ? Math.sin(f.t*4.5)*0.3 : 0));
     c.scale(-1,1);
-    drawFishArt(c, f.fish.species.id, size, f.t, {silhouette:true});
+    drawFishArt(c, f.fish.species.id, size, f.t, {underwater:true});
     c.restore();
     // 浪花圈 + 白沫
     f.ripples = f.ripples.filter(r => f.t - r.born < 1.1);
@@ -941,13 +942,23 @@ function renderLog(){
   for(const {sp,n} of rows){
     total += n;
     const row = document.createElement('div');
-    if(n>0){
-      row.className = 'log-row r'+sp.rarity;
-      row.innerHTML = '<span class="name">'+sp.name+' '+'★'.repeat(sp.rarity)+'</span><span class="cnt">× '+n+'</span>';
-    } else {
-      row.className = 'log-row unknown';
-      row.innerHTML = '<span class="name">？？？</span><span class="cnt">—</span>';
-    }
+    row.className = n>0 ? 'log-row r'+sp.rarity : 'log-row unknown';
+    // v0.6.0：每行加鱼缩略图（已解锁=彩色，未解锁=剪影）
+    const cv = document.createElement('canvas');
+    cv.className = 'log-thumb';
+    cv.width = 96; cv.height = 52;
+    const tc = cv.getContext('2d');
+    tc.translate(50, 26);   // 原点移到画布中心（drawFishArt 以原点画鱼）
+    drawFishArt(tc, sp.id, 80, 0, n>0 ? {} : {silhouette:true});
+    row.appendChild(cv);
+    const name = document.createElement('span');
+    name.className = 'name';
+    name.textContent = n>0 ? sp.name+' '+'★'.repeat(sp.rarity) : '？？？';
+    row.appendChild(name);
+    const cnt = document.createElement('span');
+    cnt.className = 'cnt';
+    cnt.textContent = n>0 ? '× '+n : '—';
+    row.appendChild(cnt);
     list.appendChild(row);
   }
   if(total===0) list.innerHTML = '<div class="log-row unknown"><span>还没有渔获，去湖边抛一竿吧</span></div>';
