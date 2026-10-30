@@ -278,7 +278,7 @@ const Store = {
 
 
 /* ================= 版本 ================= */
-const APP_VERSION = 'v0.9.0';
+const APP_VERSION = 'v0.9.1';
 
 /* ================= 奖励系统（v0.8.0 用户拍板）
  * 100斤 = 1天注册时长 + 100积分，按充值周期内累计斤数四舍五入到百斤
@@ -319,6 +319,50 @@ const Rewards = {
       }
     }
     this.save(d);
+  },
+};
+
+/* Portal 接入（v0.9.1）：登录身份感知 + 渔获上报 + 本机合并 */
+const PortalFx = {
+  HOST: (location.hostname.indexOf('daobox.net.cn') !== -1 ? 'https://daobox.net.cn' : 'https://daobox.app'),
+  server: null,   // 登录后服务端周期状态 {jin,days,cap}
+  isUser(){ return !!(window.DaoBox && window.DaoBox.user); },
+  async refresh(){
+    if(!this.isUser()){ this.server = null; return; }
+    try{
+      const r = await fetch(this.HOST + '/api/fishing/state', { credentials:'include' });
+      const d = await r.json();
+      if(d && d.ok) this.server = { jin:d.jin, days:d.days, cap:d.cap };
+    }catch(e){}
+  },
+  async report(weightKg){
+    if(!this.isUser()) return null;
+    try{
+      const r = await fetch(this.HOST + '/api/fishing/catch', { method:'POST', credentials:'include',
+        headers:{'Content-Type':'application/json'}, body: JSON.stringify({ weightKg }) });
+      const d = await r.json();
+      if(d && d.ok){
+        this.server = { jin:d.jin, days:d.days, cap:d.cap };
+        if(d.granted > 0) toast('🎉 已入账 +' + d.granted + ' 天会员时长！', 3000);
+        return d;
+      }
+    }catch(e){}
+    return null;
+  },
+  async importLocal(){
+    if(!this.isUser()) return;
+    const d = Rewards.data();
+    if(d.imported || !(d.jin > 0)) return;
+    try{
+      const r = await fetch(this.HOST + '/api/fishing/import', { method:'POST', credentials:'include',
+        headers:{'Content-Type':'application/json'}, body: JSON.stringify({ jin: d.jin }) });
+      const res = await r.json();
+      if(res && res.ok && !res.already){
+        this.server = { jin:res.jin, days:res.days, cap:res.cap };
+        toast('📥 本机渔获 ' + d.jin.toFixed(0) + ' 斤已并入账号，继续参与兑换', 3000);
+      }
+      d.imported = true; Rewards.save(d);
+    }catch(e){}
   },
 };
 
@@ -1353,13 +1397,16 @@ function renderLog(){
     const today = recs.filter(r=>r.t >= t0.getTime());
     const sumW = a => a.reduce((x,r)=>x+r.w, 0);
     const big = recs.reduce((a,r)=> !a || r.w>a.w ? r : a, null);
-    const RD = Rewards.data(), RCAP = Rewards.tier().cap;
+    const RSRV = PortalFx.isUser() && PortalFx.server ? PortalFx.server : null;
+    const RD = Rewards.data(), RCAP = RSRV ? RSRV.cap : Rewards.tier().cap;
     const stats = document.createElement('div');
     stats.className = 'log-stats';
     stats.innerHTML = '<div class="st1">🏆 累计 '+recs.length+' 条 · '+(sumW(recs)*2).toFixed(1)+' 斤</div>'
       + '<div class="st2">📅 今日 '+today.length+' 条 · '+(sumW(today)*2).toFixed(1)+' 斤'
       + '　🥇 最大 '+FISH_SPECIES.find(f=>f.id===big.s).name+' '+(big.w*2).toFixed(1)+' 斤</div>'
-      + '<div class="st2">🎁 本周期 '+RD.jin.toFixed(0)+' 斤 → 已兑 '+Rewards.daysFor(RD.jin)+' 天 / 上限 '+RCAP+' 天 · 积分 '+RD.points+'（100斤=1天+100分）</div>';
+      + '<div class="st2">🎁 ' + (RSRV
+        ? '本周期 '+RSRV.jin.toFixed(0)+' 斤 → 已兑 '+RSRV.days+' 天 / 上限 '+RSRV.cap+' 天（100斤=1天+100分，已入账）'
+        : '本周期 '+RD.jin.toFixed(0)+' 斤 → 已兑 '+Rewards.daysFor(RD.jin)+' 天 / 上限 '+RCAP+' 天 · 积分 '+RD.points+'（100斤=1天+100分）') + '</div>';
     list.appendChild(stats);
   }
   const rows = FISH_SPECIES.map(sp => ({ sp, n:d.counts[sp.id]||0 })).sort((a,b)=>b.n-a.n);
@@ -1444,8 +1491,16 @@ const Session = {
     d.active = { left: this.left, paused: this.paused, updated: Date.now() };
     DailyLimit.save(d);
   },
+  /* v0.9.1 身份感知：游客 1场×15分钟，注册用户 4场×30分钟 */
+  configurePortal(){
+    const isUser = !!(window.DaoBox && window.DaoBox.user);
+    this.DURATION = isUser ? 30*60 : 15*60;
+    DailyLimit.MAX = isUser ? 4 : 1;
+    if(PortalFx.isUser()){ PortalFx.refresh().then(()=>PortalFx.importLocal()); }
+  },
   /* v0.9.0 页面加载：恢复暂停场 / 3分钟内的刷新续场 / 否则弹出开场门 */
   boot(){
+    this.configurePortal();
     const d = DailyLimit.today();
     this.init();
     if(d.active && d.active.paused){
@@ -1470,7 +1525,7 @@ const Session = {
       showPopup('#popup-daily');
       return;
     }
-    $('#gate-info').textContent = `今日还可钓 ${DailyLimit.leftSessions()} 场 · 每场 30 分钟`;
+    $('#gate-info').textContent = `今日还可钓 ${DailyLimit.leftSessions()} 场 · 每场 ${this.DURATION/60} 分钟`;
     $('#btn-gate-resume').classList.add('hidden');
     $('#btn-gate-start').textContent = `🎣 开始本场`;
     showPopup('#popup-gate');
@@ -1639,10 +1694,13 @@ const Game = {
     $('#btn-music').addEventListener('click', ()=>{
       AudioSys.unlock(); Session.toggleMusic();
     });
-    Session.boot();
     $('#btn-gate-start').addEventListener('click', ()=>{
+      if(window.DaoBox && DaoBox.timeExceeded){ DaoBox.showQuotaModal(DaoBox.timeInfo); return; }
       const d = DailyLimit.today();
       if(d.active && d.active.paused) Session.discardSaved(); else Session.start();
+    });
+    window.addEventListener('daobox:timeexceeded', ()=>{
+      if(!Session.ended){ Session.endSession(); toast('⏰ 今日时长用完了，明天再来～', 4000); }
     });
     $('#btn-gate-resume').addEventListener('click', ()=>Session.resumeSaved());
     $('#btn-quit-confirm').addEventListener('click', ()=>{
@@ -1725,7 +1783,8 @@ const Game = {
   onCaught(fish){
     this.screen='lake';
     const isNew = Store.add(fish);
-    Rewards.addCatch(fish.weight);
+    if(PortalFx.isUser()){ PortalFx.report(fish.weight); }
+    else { Rewards.addCatch(fish.weight); }
     Session.startCount++;
     AudioSys.win();
     $('#catch-new').classList.toggle('hidden', !isNew);

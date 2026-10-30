@@ -135,10 +135,13 @@
       <p>顶格后渔获照常累计，<strong>下次充值重新开始</strong>。</p>
       <p><strong>积分不封顶</strong>，全家账户通用（和打卡等积分合并），攒着兑换知识类奖品。</p>
       <h3 style="color:var(--gold);margin:8px 0 2px">⏱ 时间规则</h3>
-      <p>每天 <strong>4 场</strong> × 30 分钟；<strong>开场就算一场</strong>，中途退出不退不补；想中途歇口气用「⏸ 暂停」，关掉页面回来可继续本场</p>
+      <p><strong>游客</strong>：每天 1 场 × 15 分钟；<strong>注册登录</strong>：每天 4 场 × 30 分钟</p>
+      <p><strong>开场就算一场</strong>，中途退出不退不补；想中途歇口气用「⏸ 暂停」，关掉页面回来可继续本场</p>
+      <p>登录后渔获自动入账号：100斤=1天会员时长+100积分，本机旧渔获可一键并入</p>
       <p>想收工：⏸ → 「今天不玩了」→ 确认退出，渔获奖励零损失</p>
       <p>🎮 手柄：A 按住收线 / X 稳住·抄网</p>
       <h3 style="color:var(--gold);margin:8px 0 2px">📝 更新记录</h3>
+      <p>· <strong>v0.9.1</strong> 接入 DaoBox 账号：登录后渔获实时入账（100斤=1天会员+100积分）、本机渔获一键并入、游客1场×15分钟/注册4场×30分钟</p>
       <p>· <strong>v0.9.0</strong> 每天4场次制（开场即计）、「今天不玩了」体面退出、暂停跨关闭恢复（继续上一场）、场次用完提示</p>
       <p>· <strong>v0.8.0</strong> 奖励计划上线（100斤=1天+100分）、每日2小时限时、搏鱼时长分档10/15/30秒、小鱼即钓即入护、深水区85%上鱼率、路亚全程站立、顶栏版本号</p>
       <p>· v0.7.7 抄网首次容错+转速放缓；v0.7.6 路亚真实收线模式；v0.7.5 本场计时+暂停+背景音乐；v0.7.3 完整抛竿动画；v0.7.2 鱼类半写实配色重做</p>
@@ -228,6 +231,7 @@
 <div id="toast" class="toast hidden"></div>
 
 <footer class="footer">
+  <a id="lock-login" href="javascript:void(0)">登录 / 注册</a>
   <a id="home-link" href="javascript:void(0)">← 返回 DaoBox 工具箱</a>
   <span class="dot">·</span>
   <span id="contact-email"></span>
@@ -248,5 +252,17 @@
 <script src="fish-data.js"></script>
 <script src="fish-art.js"></script>
 <script src="game.js"></script>
+  <script>window.DB_HOME = location.hostname.indexOf('daobox.net.cn') !== -1 ? 'https://daobox.net.cn' : 'https://daobox.app';</script>
+  <script>document.write('<script src="' + window.DB_HOME + '/portal.js" data-app="fishing"><\/script>');</script>
+  <script>
+    (function(){
+      var t0 = Date.now();
+      (function wait(){
+        var ready = window.DaoBox && (window.DaoBox.user || window.DaoBox.timeInfo || Date.now()-t0 > 4000);
+        if(ready){ try { Session.boot(); } catch(e) { console.error(e); } }
+        else setTimeout(wait, 200);
+      })();
+    })();
+  </script>
 </body>
 </html>
