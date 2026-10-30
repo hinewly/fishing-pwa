@@ -16,7 +16,7 @@ const FISH_SPECIES = [
   { id:'nianyu', name:'鲶鱼',   rarity:1, wMin:0.5, wMax:5,   power:6, stamina:5, behaviors:['deep'],          spots:['deep','weed'],      bite:[8,15] },
   { id:'heiyu',  name:'黑鱼',   rarity:2, wMin:1,   wMax:6,   power:6, stamina:5, behaviors:['dash','teeth'],  spots:['weed'],             bite:[8,14] },
   { id:'guiyu',  name:'鳜鱼',   rarity:2, wMin:0.5, wMax:4,   power:5, stamina:4, behaviors:['dash','wash'],   spots:['deep','weed'],      bite:[8,15] },
-  { id:'qingyu', name:'青鱼',   rarity:3, wMin:5,   wMax:25,  power:9, stamina:9, behaviors:['dash','deep','wash'], spots:['deep'],       bite:[10,18] },
+  { id:'qingyu', name:'青鱼',   rarity:3, wMin:5,   wMax:30,  power:9, stamina:9, behaviors:['dash','deep','wash'], spots:['deep'],       bite:[10,18] },
 ];
 
 const RARITY_INFO = { 1:{label:'普通',color:'#9aa5b1',stars:'★'}, 2:{label:'稀有',color:'#4fb3ff',stars:'★★'}, 3:{label:'传说',color:'#ffb02e',stars:'★★★'} };
@@ -37,13 +37,28 @@ function rollFish(spot, mode){
   });
   let total = weights.reduce((a,b)=>a+b,0), r = Math.random()*total, pick = pool[0];
   for(let i=0;i<pool.length;i++){ r -= weights[i]; if(r<=0){ pick = pool[i]; break; } }
-  // 个体重量：浅滩≤1kg / 深水≥1.5kg(3斤+) / 水草≥2kg(4斤+)
-  const rr = Math.pow(Math.random(), diff===1?2.6:diff===3?1.15:1.25);
-  let weight = pick.wMin + (pick.wMax-pick.wMin)*rr;
-  if(diff===1) weight = Math.min(weight, 1.0);
-  if(diff===2) weight = Math.max(weight, 1.5);
-  if(diff===3) weight = Math.max(weight, 2.0);
-  weight = +Math.min(weight, pick.wMax).toFixed(2);
+  // 个体重量
+  if(diff===3){
+    // v0.8.0 深水区分档分布：≤10斤主体70% / 10-20斤22% / 20-40斤1.5% / 40-60斤0.5%（约百竿一条20斤+）
+    const r = Math.random();
+    let lo, hi;
+    if(r<0.70){ lo=4; hi=10; }
+    else if(r<0.92){ lo=10; hi=20; }
+    else if(r<0.995){ lo=20; hi=40; }
+    else { lo=40; hi=60; }
+    let cand = pool.filter(f=>f.wMax*2>=lo);
+    if(!cand.length){ lo=4; hi=10; cand=pool.filter(f=>f.wMax*2>=4); }
+    pick = cand[Math.floor(Math.random()*cand.length)] || pick;
+    const llo = Math.max(pick.wMin*2, lo), lhi = Math.min(pick.wMax*2, hi);
+    const jin = llo + (lhi-llo)*Math.pow(Math.random(), 1.6);  // 偏低端
+    weight = +(jin/2).toFixed(2);
+  } else {
+    const rr = Math.pow(Math.random(), diff===1?2.6:1.25);
+    weight = pick.wMin + (pick.wMax-pick.wMin)*rr;
+    if(diff===1) weight = Math.min(weight, 1.0);
+    if(diff===2) weight = Math.max(weight, 1.5);
+    weight = +Math.min(weight, pick.wMax).toFixed(2);
+  }
   const wr = (weight - pick.wMin)/(pick.wMax-pick.wMin || 1);
   let strength = Math.min(1, wr*0.7 + Math.random()*0.3);
   if(diff===1) strength = Math.min(strength, 0.5);   // 小鱼个体都好对付

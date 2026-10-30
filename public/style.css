@@ -95,3 +95,6 @@ canvas#lake-canvas,canvas#fight-canvas{position:absolute;inset:0;width:100%;heig
 .log-stats .st1{font-size:16px;font-weight:700;color:var(--gold)}
 .log-stats .st2{color:var(--dim);font-size:13px}
 .log-row .cnt{font-size:13px;font-weight:600;color:var(--dim)}
+
+/* v0.8.0 顶栏版本号 */
+.app-ver{ opacity:.55; font-size:11px; align-self:center; margin-right:2px; white-space:nowrap; }

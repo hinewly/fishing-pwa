@@ -29,7 +29,8 @@
       <button id="btn-music" class="ghost-btn" title="背景音乐">🎵</button>
       <button id="btn-pause" class="ghost-btn" title="暂停">⏸</button>
       <button id="btn-refresh" class="ghost-btn" title="刷新获取最新版本">🔄</button>
-      <button id="btn-help" class="ghost-btn">?</button>
+      <span id="app-version" class="app-ver"></span>
+      <button id="btn-help" class="ghost-btn">帮助</button>
     </div>
   </header>
   <div id="lake-tip" class="lake-tip">点击湖面选择钓位，然后抛竿</div>
@@ -102,17 +103,38 @@
 <!-- ========== 帮助 ========== -->
 <div id="panel-help" class="popup hidden">
   <div class="popup-card log">
-    <h2>怎么玩</h2>
+    <h2>帮助</h2>
     <div class="help-body">
-      <p>① 点击湖面选钓位 → 抛竿等浮漂信号</p>
-      <p>② 浮漂<strong>猛地下沉</strong>时，立刻点「刺鱼」按钮（假口乱刺会惊窝！）</p>
-      <p>③ 搏鱼：<strong>按住收线，张力涨太快就松手</strong>。张力顶红线持续 1.5 秒 = 断线</p>
-      <p>④ 大鱼会冲刺、钻底、洗鳃：<br>· 冲刺钻底时千万别硬拉<br>· 洗鳃出现时快速点「稳住」</p>
-      <p>⑥ <strong>钓位=鱼情</strong>：★浅滩=小鱼池（全是2斤内的小鱼，提竿就上）→ ★★水草区=猛鱼池（3斤+黑鱼鳜鱼，要遛鱼）→ ★★★深水区=巨物池（4斤起步能上几十斤，最考验遛鱼）</p>
-      <p>⑦ 台钓看漂：静止<strong>露5目</strong>，假口只顿1目别理；<strong>吞2目以上（或黑漂/送漂）才能提竿</strong>，提前提=空竿惊窝。左下角放大镜看清楚</p>
-      <p>⑧ 路亚：抛投后<strong>按住收线</strong>，<strong>停顿和轻点</strong>更诱鱼；鱼攻击假饵时画面炸水花，<strong>0.5秒内点「扬竿！」</strong>，晚了就吐饵</p>
-      <p>⑤ 鱼拉到岸边后，看准挣扎间隙点「抄网」，抄早了撞网跑鱼！</p>
-      <p>🎮 连了蓝牙手柄的话，按任意键激活：A 按住收线，X 稳住/抄网</p>
+      <h3 style="color:var(--gold);margin:4px 0 2px">🎣 台钓怎么玩</h3>
+      <p>① 点击湖面<strong>选钓位</strong> → 点「抛竿」看动画入水</p>
+      <p>② 浮漂静止时<strong>露5目</strong>；假口只顿1目别理它，<strong>吞2目以上/黑漂/送漂</strong>才提竿——提前提=空竿惊窝（左下角放大镜看得更清楚）</p>
+      <p>③ 中鱼后进入搏鱼：<strong>按住按钮收线，张力涨太快就松手</strong>；红线区持续几秒会断线</p>
+      <p>④ 大鱼三招要应付：<strong>冲刺</strong>（快松手放线）、<strong>钻底</strong>（松线别硬拉）、<strong>洗鳃</strong>（快速点「稳住」，漏一次还有机会）</p>
+      <p>⑤ 鱼拉到岸边出现<strong>抄网</strong>：看准绿色区间点一下！抄早了第一次只是抄空，还有一次机会</p>
+      <h3 style="color:var(--gold);margin:8px 0 2px">⚡ 路亚怎么玩</h3>
+      <p>① 路亚全程<strong>站着玩</strong>：抛投后假饵自己游，<strong>按住按钮=加速收线</strong></p>
+      <p>② <strong>停顿和轻点</strong>更诱鱼；鱼攻击时画面<strong>炸水花</strong>，马上点「扬竿！」（约半秒窗口）</p>
+      <p>③ 中鱼后搏鱼操作和台钓一样</p>
+      <h3 style="color:var(--gold);margin:8px 0 2px">🐟 鱼情与难度</h3>
+      <p>· <strong>★浅滩</strong>：小鱼池，最好钓（上鱼率约95%）</p>
+      <p>· <strong>★★水草区</strong>：唯一的高难池，断线跑鱼常事，大鱼多</p>
+      <p>· <strong>★★★深水区</strong>：中鱼率≥85%，20斤以上大鱼约百竿一条，最大60斤巨物；<strong>咬钩会全屏预警</strong></p>
+      <p>· ≤1斤的小鱼<strong>中鱼即入护</strong>；其他鱼搏鱼10~30秒内必定上岸（看准了操作就行）</p>
+      <h3 style="color:var(--gold);margin:8px 0 2px">🎁 奖励计划</h3>
+      <p><strong>100斤渔获 = 1天注册时长 + 100积分</strong>，四舍五入随钓随加（钓150斤算2天）</p>
+      <p>每个充值周期内可兑换的时长上限：</p>
+      <p>· ¥9.9（99天档）→ 最多换 <strong>30天</strong></p>
+      <p>· ¥29.9（320天档）→ 最多换 <strong>60天</strong></p>
+      <p>· ¥69.9（750天档）→ 最多换 <strong>90天</strong></p>
+      <p>· ¥99.9（3年档）→ 最多换 <strong>120天</strong></p>
+      <p>顶格后渔获照常累计，<strong>下次充值重新开始</strong>。</p>
+      <p><strong>积分不封顶</strong>，全家账户通用（和打卡等积分合并），攒着兑换知识类奖品。</p>
+      <h3 style="color:var(--gold);margin:8px 0 2px">⏱ 时间规则</h3>
+      <p>每场30分钟；钓鱼每天最多 <strong>2 小时</strong>（4场），鱼也要休息～</p>
+      <p>🎮 手柄：A 按住收线 / X 稳住·抄网</p>
+      <h3 style="color:var(--gold);margin:8px 0 2px">📝 更新记录</h3>
+      <p>· <strong>v0.8.0</strong> 奖励计划上线（100斤=1天+100分）、每日2小时限时、搏鱼时长分档10/15/30秒、小鱼即钓即入护、深水区85%上鱼率、路亚全程站立、顶栏版本号</p>
+      <p>· v0.7.7 抄网首次容错+转速放缓；v0.7.6 路亚真实收线模式；v0.7.5 本场计时+暂停+背景音乐；v0.7.3 完整抛竿动画；v0.7.2 鱼类半写实配色重做</p>
     </div>
     <button id="btn-help-close" class="main-btn">知道了</button>
   </div>
@@ -135,6 +157,16 @@
     <p style="color:var(--dim);margin-bottom:16px" id="pause-timer-info">剩余时间 30:00</p>
     <button id="btn-resume" class="main-btn">▶ 继续钓鱼</button>
     <button id="btn-end-session" class="main-btn ghost" style="margin-top:10px;background:rgba(255,255,255,.1);color:var(--dim)">🏁 结束本场</button>
+  </div>
+</div>
+
+<!-- ========== 每日限时弹窗 ========== -->
+<div id="popup-daily" class="popup hidden">
+  <div class="popup-card">
+    <div style="font-size:48px;margin-bottom:8px">🌙</div>
+    <h2 style="font-size:22px;margin-bottom:8px">今天钓够啦</h2>
+    <p id="daily-left" style="color:var(--dim);margin-bottom:16px"></p>
+    <button id="btn-daily-ok" class="main-btn">知道了</button>
   </div>
 </div>
 

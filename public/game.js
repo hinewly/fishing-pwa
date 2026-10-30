@@ -277,6 +277,66 @@ const Store = {
 };
 
 
+/* ================= 版本 ================= */
+const APP_VERSION = 'v0.8.0';
+
+/* ================= 奖励系统（v0.8.0 用户拍板）
+ * 100斤 = 1天注册时长 + 100积分，按充值周期内累计斤数四舍五入到百斤
+ * 封顶（充值天数→周期上限）：99→30天 / 320→60天 / 750→90天 / 1095→120天；下次充值重置
+ * 积分不封顶、家庭账户全局、只换知识奖品不换时间
+ * portal 接入前按体验档（99天/30天）本地计算
+ */
+const Rewards = {
+  key:'fishing_reward_v1',
+  TIERS: [ {days:99,cap:30}, {days:320,cap:60}, {days:750,cap:90}, {days:1095,cap:120} ],
+  tier(){ return this.TIERS[0]; },   // TODO portal 接入后按用户充值档位取
+  load(){ try{ return JSON.parse(localStorage.getItem(this.key)) || {}; }catch(e){ return {}; } },
+  save(d){ localStorage.setItem(this.key, JSON.stringify(d)); },
+  data(){
+    const d = this.load();
+    d.jin = d.jin||0; d.points = d.points||0; d.capToast = d.capToast||false; d.nudgeBlock = d.nudgeBlock===undefined?-1:d.nudgeBlock;
+    return d;
+  },
+  daysFor(jin){ return Math.min(this.tier().cap, Math.round(jin/100)); },
+  addCatch(weightKg){
+    const d = this.data();
+    const prevDays = this.daysFor(d.jin);
+    d.jin = +(d.jin + weightKg*2).toFixed(2);
+    d.points = Math.round(d.jin);          // 100斤=100积分，不封顶
+    const nowDays = this.daysFor(d.jin);
+    const cap = this.tier().cap;
+    if(nowDays > prevDays && nowDays <= cap){
+      toast(`🎉 渔获兑换：已累计 ${nowDays} 天 / 上限 ${cap} 天`, 2600);
+    } else if(prevDays >= cap && !d.capToast){
+      d.capToast = true;
+      toast('本周期奖励已领满，下次充值后重新开始累积', 3200);
+    } else if(nowDays < cap){
+      const block = Math.floor(d.jin/100);
+      if(d.jin % 100 >= 30 && d.nudgeBlock < block){
+        d.nudgeBlock = block;
+        const remain = Math.ceil((block+1)*100 - d.jin);
+        toast(`💪 还差 ${remain} 斤就能+1天！`, 2600);
+      }
+    }
+    this.save(d);
+  },
+};
+
+/* 每日限时：钓鱼每天最多2小时（仅限钓鱼） */
+const DailyLimit = {
+  LIMIT: 2*3600,
+  key: 'fishing_daily_v1',
+  today(){ try{ const d=JSON.parse(localStorage.getItem(this.key)); if(d && d.k===new Date().toDateString()) return d; }catch(e){} return {k:new Date().toDateString(), sec:0}; },
+  tick(dt){
+    if(dt<=0) return 0;
+    const d = this.today(); d.sec += dt;
+    localStorage.setItem(this.key, JSON.stringify(d));
+    return d.sec;
+  },
+  reached(){ return this.today().sec >= this.LIMIT; },
+  leftMin(){ return Math.max(0, Math.ceil((this.LIMIT-this.today().sec)/60)); },
+};
+
 /* ================= 钓鱼人（半写实坐姿，侧脸朝右） =================
  * 以脚底为原点 y=0，身高约 78 单位；s 为缩放
  * mode: idle 等口 / bite 刺鱼瞬间竿被下拉 / fight 搏鱼（剪影由调用方换色）
@@ -417,7 +477,7 @@ function drawShoreAngler(c, W, H, t, lake){
     else { const q = Math.min(1,(T-1.12)/0.28); drawAngler.standK = 1-Math.sin(q*Math.PI/2); drawAngler.castDrop = 0.35 - q*0.33; drawAngler.castLean = 0; }
     mode = 'cast';
   }
-  if(lake.mode==='lure' && lake.state==='retrieving'){ mode='stand'; drawAngler.standK = 1; }
+  if(lake.mode==='lure' && mode!=='cast'){ mode='stand'; drawAngler.standK = 1; }
   else if(mode!=='cast') drawAngler.standK = 0;
   drawAngler(c, ax, ay, Math.min(W,H)/430*1.15, t, mode, false);
   // 竿稍坐标（与 drawAngler 内部几何一致：握点(27,-17) rotate(rodDrop) 竿尖(105,-52)）
@@ -946,15 +1006,19 @@ const Fight = {
       tension: 20, progress: 0.12, stamina: 1, t: 0,
       ripples: [], splashT: 0.5,
       dash:null, nextDash: rand(3,7), snag:null, snagHold:0, wash:null,
-      redTime:0, slack:0, fightSec:0, netT:0, _reelT:0, _creakT:0,
+      redTime:0, slack:0, fightSec:0, netT:0, _reelT:0, _creakT:0, washMissed:false,
     };
     const D = this.F.diff;
     // v0.6.0 调参：整体成功率 浅滩~95% / 深水~82% / 水草~70%
-    this.redLimit  = D===1 ? 3.0 : D===3 ? 1.7 : 2.2;    // 红线容忍时长（放宽）
-    this.slackLimit= D===1 ? 8.0 : D===3 ? 4.0 : 5.5;    // 低张力容忍时长（放宽）
+    this.redLimit  = D===1 ? 3.5 : D===3 ? 2.6 : 2.4;    // 红线容忍时长（放宽）
+    this.slackLimit= D===1 ? 8.0 : D===3 ? 6.0 : 6.0;    // 低张力容忍时长（放宽）
     this.tMul      = D===1 ? 0.7 : D===3 ? 0.95 : 0.85;  // 张力增速倍率（放缓）
     this.pMul      = D===1 ? 1.5 : D===3 ? 0.9 : 1.05;   // 收线进度倍率（搏鱼更短）
-    this.evMul     = D===1 ? 0.4 : D===3 ? 1.2 : 0.8;    // 大鱼动作概率（减少）
+    this.evMul     = D===1 ? 0.4 : D===3 ? 0.8 : 0.8;    // 大鱼动作概率（减少）
+    // v0.8.0 搏鱼时长分档：≤20斤10秒 / 20-40斤15秒 / 40斤+巨物30秒；到点必成功
+    this.capSec = fish.weight<=10 ? 10 : fish.weight<=20 ? 15 : 30;
+    this.F.sizeSlow = fish.weight<=10 ? 1 : fish.weight<=20 ? 0.75 : 0.55;   // 大鱼收线更慢，有拉锯感
+    if(fish.weight>=20){ this.evMul *= 0.55; this.redLimit += 1.2; this.slackLimit += 2; }  // 巨物容错加大，成功率≥80%
     this.snagLimit = D===1 ? 2.4 : 1.7;
     // v0.7.0 小鱼(≤2斤)不用遛鱼：轻松拉上来零失败，也不进抄网QTE
     this.small = fish.weight <= 1.0;
@@ -1026,7 +1090,8 @@ const Fight = {
     const sp = f.fish.species, S = f.fish.strength;
     const tired = f.stamina <= 0;
     // v0.7.1 遛鱼30秒封顶：超时鱼必力竭加速上岸，不让玩家耗着
-    if(f.fightSec > 26){ f.stamina = 0; f.progress += dt*0.35; }
+    if(f.fightSec > f.capSec - 4){ f.stamina = Math.min(f.stamina, 0.05); }   // 临近上限鱼力竭
+    if(f.fightSec >= f.capSec){ f.progress = 1; }                              // 到点必成功
 
     if(this.phase==='net'){
       f.netT += dt;
@@ -1070,8 +1135,13 @@ const Fight = {
       f.wash.left -= dt;
       if(f.wash.left<=0){
         $('#btn-steady').classList.add('hidden');
-        this.finish(false, '洗鳃脱钩！', '鱼跃出水面一个甩头，钩子直接弹飞了。' + (sp.behaviors.includes('teeth')?'（黑鱼牙口好，普通线更容易被磨断）':''));
-        return;
+        if(!f.washMissed){   // v0.8.0 首次漏点容错
+          f.washMissed = true; f.wash = null;
+          $('#fight-msg').textContent = '洗鳃没点到！别慌，稳住还能救';
+        } else {
+          this.finish(false, '洗鳃脱钩！', '鱼跃出水面一个甩头，钩子直接弹飞了。' + (sp.behaviors.includes('teeth')?'（黑鱼牙口好，普通线更容易被磨断）':''));
+          return;
+        }
       }
     }
 
@@ -1086,7 +1156,7 @@ const Fight = {
       if(f.snag) dT += 20;
       f.tension += dT*dt;
       f.stamina -= dt*(0.08+0.08*S)*(tired?0.3:1);
-      f.progress += dt*0.19*this.pMul*(0.55+0.45*f.stamina)*(1.25-S*0.55)*(tired?1.7:1);
+      f.progress += dt*0.19*this.pMul*(0.55+0.45*f.stamina)*(1.25-S*0.55)*(tired?1.7:1)*(f.sizeSlow||1);
       f._reelT += dt;
       if(f._reelT > 0.09){ f._reelT=0; AudioSys.reel(); }
     } else {
@@ -1136,6 +1206,7 @@ const Fight = {
       }
     }
     if(f.progress >= 1 && this.phase==='fight'){
+      if(f.fightSec >= f.capSec){ this.finish(true, null); return; }   // 到点必成功，不再让抄网失败
       if(this.small){ this.finish(true, null); return; }
       this.phase = 'net'; f.netT = 0;
       $('#btn-reel').classList.add('hidden');
@@ -1280,11 +1351,13 @@ function renderLog(){
     const today = recs.filter(r=>r.t >= t0.getTime());
     const sumW = a => a.reduce((x,r)=>x+r.w, 0);
     const big = recs.reduce((a,r)=> !a || r.w>a.w ? r : a, null);
+    const RD = Rewards.data(), RCAP = Rewards.tier().cap;
     const stats = document.createElement('div');
     stats.className = 'log-stats';
     stats.innerHTML = '<div class="st1">🏆 累计 '+recs.length+' 条 · '+(sumW(recs)*2).toFixed(1)+' 斤</div>'
       + '<div class="st2">📅 今日 '+today.length+' 条 · '+(sumW(today)*2).toFixed(1)+' 斤'
-      + '　🥇 最大 '+FISH_SPECIES.find(f=>f.id===big.s).name+' '+(big.w*2).toFixed(1)+' 斤</div>';
+      + '　🥇 最大 '+FISH_SPECIES.find(f=>f.id===big.s).name+' '+(big.w*2).toFixed(1)+' 斤</div>'
+      + '<div class="st2">🎁 本周期 '+RD.jin.toFixed(0)+' 斤 → 已兑 '+Rewards.daysFor(RD.jin)+' 天 / 上限 '+RCAP+' 天 · 积分 '+RD.points+'（100斤=1天+100分）</div>';
     list.appendChild(stats);
   }
   const rows = FISH_SPECIES.map(sp => ({ sp, n:d.counts[sp.id]||0 })).sort((a,b)=>b.n-a.n);
@@ -1338,6 +1411,12 @@ const Session = {
   },
   start(){
     this.init();
+    if(DailyLimit.reached()){   // v0.8.0 当日额度已用完：不开始计时
+      this.ended = true;
+      $('#daily-left').textContent = '今天的 2 小时钓鱼时间已用完，明天再来～渔获奖励会一直保留。';
+      showPopup('#popup-daily');
+      return;
+    }
     clearInterval(this.timerId);
     this.timerId = setInterval(()=>{
       if(this.paused || this.ended) return;
@@ -1438,8 +1517,15 @@ const Session = {
   },
   newSession(){
     hidePopup('#popup-session');
+    if(DailyLimit.reached()){
+      this.ended = true;
+      clearInterval(this.timerId);
+      $('#daily-left').textContent = '今天的 2 小时钓鱼时间已用完，明天再来～渔获奖励会一直保留。';
+      showPopup('#popup-daily');
+      return;
+    }
     this.start();
-    toast('🎣 新一场开始，限时30分钟');
+    toast(`🎣 新一场开始，限时30分钟（今日还能钓 ${DailyLimit.leftMin()} 分钟）`);
   }
 };
 
@@ -1448,6 +1534,7 @@ const Game = {
   last:0, animT:0, catchRaf:null,
   init(){
     Lake.init(); Fight.init();
+    $('#app-version').textContent = APP_VERSION;
     $('#btn-cast').addEventListener('click', ()=>this.mainAction());
     $('#btn-catch-ok').addEventListener('click', ()=>{ hidePopup('#popup-catch'); cancelAnimationFrame(this.catchRaf); });
     $('#btn-lost-ok').addEventListener('click', ()=>hidePopup('#popup-lost'));
@@ -1455,6 +1542,7 @@ const Game = {
     $('#btn-log-close').addEventListener('click', ()=>hidePopup('#panel-log'));
     $('#btn-help').addEventListener('click', ()=>showPopup('#panel-help'));
     $('#btn-help-close').addEventListener('click', ()=>hidePopup('#panel-help'));
+    $('#btn-daily-ok').addEventListener('click', ()=>hidePopup('#popup-daily'));
     $('#btn-music-close').addEventListener('click', ()=>hidePopup('#panel-music'));
     $('#btn-mode-tai').addEventListener('click', ()=>Lake.setMode('tai'));
     $('#btn-mode-lure').addEventListener('click', ()=>Lake.setMode('lure'));
@@ -1518,12 +1606,18 @@ const Game = {
   },
   hookup(){
     const fish = Lake.hookedFish;
+    if(fish.weight <= 0.5){   // v0.8.0 ≤1斤小鱼：中鱼即入护
+      this.onCaught(fish);
+      Lake.reset();
+      return;
+    }
     this.screen='fight';
     Fight.start(fish);
   },
   onCaught(fish){
     this.screen='lake';
     const isNew = Store.add(fish);
+    Rewards.addCatch(fish.weight);
     Session.startCount++;
     AudioSys.win();
     $('#catch-new').classList.toggle('hidden', !isNew);
@@ -1553,6 +1647,10 @@ const Game = {
     const dt = Session.paused ? 0 : Math.min(0.05, (t-this.last)/1000 || 0.016);
     this.last = t; this.animT = Session.paused ? this.animT : t/1000;
     GamepadFx.poll();
+    if(dt>0 && DailyLimit.tick(dt) >= DailyLimit.LIMIT && !Session.ended){
+      Session.endSession();
+      toast('⏰ 今天 2 小时钓鱼时间用完了，明天再来！', 4000);
+    }
     if(this.screen==='lake'){
       Lake.update(dt);
       Lake.draw(this.animT);
