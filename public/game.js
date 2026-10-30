@@ -993,8 +993,12 @@ const Game = {
     });
     ['pointerup','pointerleave','pointercancel'].forEach(ev=>
       castBtn.addEventListener(ev, ()=>{ Lake.holding = false; }));
-    // v0.6.0 版本更新：每次打开自动检查+静默装新版，toast 提示用户点 🔄 手动刷新
-    $('#btn-refresh').addEventListener('click', ()=>location.reload());
+    // v0.6.2 刷新按钮：时间戳跳转代替 reload（iOS 主屏PWA模式下 location.reload 可能无效），事件委托兜底
+    document.addEventListener('click', e => {
+      if(e.target.closest && e.target.closest('#btn-refresh')){
+        location.replace('./?r=' + Date.now());
+      }
+    });
     if('serviceWorker' in navigator){
       navigator.serviceWorker.register('sw.js').then(reg=>{
         reg.update().catch(()=>{});   // 浏览器默认24h才查一次，这里每次加载都查
