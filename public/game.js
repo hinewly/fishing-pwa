@@ -399,8 +399,10 @@ function drawShoreAngler(c, W, H, t, lake){
     c.fillStyle = '#7d6a44';
     c.beginPath(); c.ellipse(rx+sway, base-40-i*5, 2.4, 7, sway*0.02, 0, Math.PI*2); c.fill();
   }
-  // 钓鱼人
-  const ax = W*0.115, ay = H*0.905;
+  // 钓鱼人（v0.7.6：路亚收线时沿岸缓步走动）
+  const walking = lake.mode==='lure' && lake.state==='retrieving';
+  const walkX = walking ? Math.sin(performance.now()/1000 * 0.4) * W*0.045 : 0;
+  const ax = W*0.115 + walkX, ay = H*0.905;
   let mode = lake.state==='biting' ? 'bite' : 'idle';
   if(lake.state==='casting' && lake.castAnim){
     // v0.7.3 抛竿三段：起身后摆 → 挥竿前甩 → 收竿坐回
@@ -416,7 +418,8 @@ function drawShoreAngler(c, W, H, t, lake){
   const s = Math.min(W,H)/430*1.15;
   const rodDrop = mode==='cast' ? (drawAngler.castDrop ?? 0.02) : mode==='bite' ? 0.35 : 0.02;
   const standK = drawAngler.standK ?? 0;
-  const hx = ax + 27*s, hy = ay - (17 + standK*14)*s;
+  const hx2 = W*0.115 + walkX + 27*s;
+  const hx = hx2, hy = ay - (17 + standK*14)*s;
   const dx = 105*Math.cos(rodDrop) + 52*Math.sin(rodDrop);
   const dy = -(105*Math.sin(rodDrop)) + (-52)*Math.cos(rodDrop) + 2*Math.cos(rodDrop);
   return { tipX: hx + dx*s, tipY: hy + dy*s };
@@ -507,8 +510,8 @@ const Lake = {
       const ldiff = this.spot.diff||2;
       this.nextAttack = ldiff===1 ? rand(1,2.5) : ldiff===3 ? rand(2,4.5) : rand(1.2,3.5);
       this.attackWin = ldiff===1 ? 0.8 : ldiff===3 ? 0.55 : 0.7;
-      btn.textContent = '按住收线';
-      $('#lake-tip').textContent = '按住收线收饵……停顿一下、轻点一下更诱鱼';
+      btn.textContent = '⚡ 加速收线';
+      $('#lake-tip').textContent = '假饵在游……按住加速收线，水花炸了马上扬竿！';
     }
   },
   strikeValid(){
@@ -615,16 +618,15 @@ const Lake = {
       }
       return;
     }
-    // —— 路亚收线 ——
+    // —— 路亚收线（v0.7.6：持续收线+动态路径+自动诱鱼）——
     if(this.state==='retrieving'){
-      if(this.holding){
-        this.retProg += dt*0.20;
-        this.nextAttack -= dt*1.0;
-        this._reelT += dt;
-        if(this._reelT>0.16){ this._reelT=0; AudioSys.reel(); }
-      } else {
-        this.nextAttack -= dt*1.9;   // 停顿更诱鱼
-      }
+      // 永远在收线：不按=慢收（假饵慢慢游），按住=快收
+      const reelSpeed = this.holding ? 0.22 : 0.07;
+      this.retProg += dt * reelSpeed;
+      // 不按的时候鱼也照样追（诱鱼效果），按住收得快反而刺激攻击
+      this.nextAttack -= dt * (this.holding ? 1.2 : 0.8);
+      this._reelT += dt;
+      if(this._reelT > (this.holding?0.14:0.35)){ this._reelT=0; AudioSys.reel(); }
       if(this.nextAttack <= 0){
         this.state='attack'; this.attackT=0;
         $('#btn-cast').textContent = '扬竿！';
@@ -770,17 +772,21 @@ const Lake = {
       c.fillStyle = strike ? '#fff' : '#ffd250';
       c.fillText(tag, bx, ty);
     }
-    // —— 路亚：假饵 + 收线轨迹 ——
+    // —— 路亚：假饵蛇形游动 + 尾迹（v0.7.6 动态路径）——
     if(this.bobber && this.spot && this.mode==='lure'){
       const s = this.spot;
       const ax = W*0.19, ay = s.y*H + 40;
       const p = this.state==='attack' ? Math.min(1, this.retProg+0.05) : this.retProg;
-      const lx = s.x*W + (ax - s.x*W)*p;
-      const ly = s.y*H + Math.sin(t*3+p*9)*4;
-      // 收水花尾迹
-      for(let i=1;i<=4;i++){
-        c.beginPath(); c.ellipse(lx + i*9, ly, 7-i, 2.2-i*0.3, 0, 0, Math.PI*2);
-        c.strokeStyle = `rgba(255,255,255,${0.35-i*0.07})`; c.lineWidth = 1; c.stroke();
+      // 蛇形路径：左右摆动幅度大，像真饵在游
+      const wiggle = Math.sin(p*14 + t*4) * 38;
+      const depth = Math.sin(p*8 + t*2) * 14;
+      const lx = s.x*W + (ax - s.x*W)*p + wiggle*(1-p*0.5);
+      const ly = s.y*H + depth*(1-p);
+      // 收线水花尾迹（V字型）
+      for(let i=1;i<=6;i++){
+        const wx = lx + i*11*(1+Math.sin(t*8+i)*0.2);
+        c.beginPath(); c.ellipse(wx, ly + Math.sin(t*6+i*1.3)*3, 8-i, 2.5-i*0.3, 0, 0, Math.PI*2);
+        c.strokeStyle = `rgba(255,255,255,${0.4-i*0.06})`; c.lineWidth = 1.2; c.stroke();
       }
       if(this.state==='attack'){
         const at = this.attackT;
@@ -832,9 +838,11 @@ const Lake = {
       } else {
         const ax2 = W*0.19;
         const p = this.state==='attack' ? Math.min(1, this.retProg+0.05) : this.retProg;
-        ex = this.spot.x*W + (ax2 - this.spot.x*W)*p;
-        ey = this.spot.y*H + Math.sin(t*3+p*9)*4 - 2;
-        sag = this.state==='attack' ? 6 : 18;
+        const wiggle2 = Math.sin(p*14 + t*4) * 38;
+        const depth2 = Math.sin(p*8 + t*2) * 14;
+        ex = this.spot.x*W + (ax2 - this.spot.x*W)*p + wiggle2*(1-p*0.5);
+        ey = this.spot.y*H + depth2*(1-p) - 2;
+        sag = this.state==='attack' ? 6 : 14 + Math.sin(t*4)*5;
       }
       c.beginPath();
       c.moveTo(tip.tipX, tip.tipY);
