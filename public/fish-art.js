@@ -6,18 +6,18 @@
  * v0.6.0 微动作：呼吸体缩放 / 鳃盖开合 / 嘴张合 / 胸鳍划水 / 尾鳍摆动
  */
 const FISH_ART = {
-  jiyu:      { top:[120,132,140], belly:[225,228,225], fin:[150,160,168], hf:.34, head:.30, tail:.22, pattern:'scale', pc:[92,102,110], dorsal:'mid', forked:.5 },
-  luofei:    { top:[96,118,96],   belly:[210,214,196], fin:[70,96,74],    hf:.36, head:.30, tail:.22, pattern:'stripes', pc:[52,72,54], dorsal:'long', forked:.45 },
-  huangsang: { top:[150,124,44],  belly:[232,214,140], fin:[120,98,32],   hf:.30, head:.34, tail:.24, pattern:'none',   barbels:true, dorsal:'spine' },
-  caoyu:     { top:[104,128,74],  belly:[228,230,210], fin:[120,140,92],  hf:.27, head:.30, tail:.20, pattern:'scale', pc:[88,108,66], dorsal:'mid', forked:.5 },
-  lianyu:    { top:[150,158,166], belly:[235,238,240], fin:[160,168,176], hf:.36, head:.32, tail:.20, pattern:'none',   dorsal:'mid', forked:.5 },
-  yongyu:    { top:[110,116,124], belly:[220,222,224], fin:[130,136,144], hf:.40, head:.40, tail:.20, pattern:'blots', pc:[70,76,84], dorsal:'mid', forked:.5, fatHead:true },
-  liyu:      { top:[128,96,52],   belly:[228,204,160], fin:[150,116,66],  hf:.34, head:.30, tail:.20, pattern:'scale', pc:[104,78,40], barbels:true, dorsal:'mid', forked:.45 },
-  qiaozui:   { top:[132,150,160], belly:[235,240,242], fin:[150,166,174], hf:.24, head:.34, tail:.22, pattern:'none',   dorsal:'mid', forked:.55, upmouth:true },
-  nianyu:    { top:[76,72,68],    belly:[190,182,166], fin:[96,90,84],    hf:.26, head:.38, tail:.24, pattern:'none',   barbels:true, flatHead:true },
-  heiyu:     { top:[70,72,66],    belly:[170,172,158], fin:[86,88,80],    hf:.28, head:.32, tail:.22, pattern:'blots', pc:[48,50,44], snakeHead:true },
-  guiyu:     { top:[96,108,56],   belly:[216,212,168], fin:[92,100,50],   hf:.38, head:.32, tail:.20, pattern:'blots', pc:[62,60,30], dorsal:'spiny', bigDorsal:true },
-  qingyu:    { top:[52,60,72],    belly:[198,204,212], fin:[80,92,106],   hf:.30, head:.30, tail:.22, pattern:'none',   dorsal:'mid', forked:.5 },
+  jiyu:      { shape:'oval',    top:[136,148,92],  belly:[232,232,212], fin:[208,138,88],  hf:.40, head:.28, tail:.24, pattern:'scale', pc:[100,110,70], dorsal:'mid', forked:.5 },
+  luofei:    { shape:'oval',    top:[92,116,86],   belly:[214,218,196], fin:[64,94,68],    hf:.38, head:.30, tail:.22, pattern:'stripes', pc:[46,66,48], dorsal:'long', forked:.45 },
+  huangsang: { shape:'cat',     top:[172,144,46],  belly:[236,216,132], fin:[150,122,36],  hf:.30, head:.42, tail:.24, pattern:'none',  barbels:true, dorsal:'spine' },
+  caoyu:     { shape:'torpedo', top:[98,140,66],   belly:[226,230,206], fin:[110,132,80],  hf:.24, head:.28, tail:.20, pattern:'scale', pc:[84,116,58], dorsal:'mid', forked:.5 },
+  lianyu:    { shape:'silver',  top:[142,160,176], belly:[238,240,242], fin:[168,178,188], hf:.38, head:.34, tail:.20, pattern:'none',  dorsal:'mid', forked:.5 },
+  yongyu:    { shape:'silver',  top:[104,112,120], belly:[222,224,226], fin:[134,140,148], hf:.44, head:.42, tail:.20, pattern:'blots', pc:[64,70,78], dorsal:'mid', forked:.5 },
+  liyu:      { shape:'oval',    top:[152,112,52],  belly:[234,208,152], fin:[186,92,58],   hf:.36, head:.30, tail:.20, pattern:'scale', pc:[122,86,42], barbels:true, dorsal:'mid', forked:.45 },
+  qiaozui:   { shape:'torpedo', top:[112,142,168], belly:[238,242,244], fin:[152,168,182], hf:.24, head:.32, tail:.22, pattern:'none',  dorsal:'mid', forked:.55, upmouth:true },
+  nianyu:    { shape:'cat',     top:[90,86,62],    belly:[196,186,158], fin:[100,94,80],   hf:.30, head:.40, tail:.24, pattern:'none',  barbels:true, flatHead:true },
+  heiyu:     { shape:'torpedo', top:[66,82,50],    belly:[172,176,156], fin:[80,92,64],    hf:.28, head:.32, tail:.22, pattern:'blots', pc:[40,52,32], snakeHead:true },
+  guiyu:     { shape:'perch',   top:[144,132,54],  belly:[220,214,164], fin:[96,104,52],   hf:.46, head:.32, tail:.20, pattern:'blots', pc:[66,58,26], dorsal:'spiny', bigDorsal:true },
+  qingyu:    { shape:'torpedo', top:[54,66,88],    belly:[198,204,212], fin:[76,90,110],   hf:.28, head:.30, tail:.22, pattern:'none',  dorsal:'mid', forked:.5 },
 };
 
 const _WATER_RGB = [26, 66, 90];
@@ -33,21 +33,66 @@ function drawFishArt(ctx, id, len, t = 0, opts = {}) {
   const dark = !!opts.silhouette;
   const uw = !!opts.underwater;
   // 水下模式：所有体色向水色偏移 55%
-  const finC = dark ? null : (uw ? _mixRGB(a.fin,0.38).join(',') : a.fin.join(','));
-  const topC = dark ? null : (uw ? _mixRGB(a.top,0.38) : a.top);
-  const bellyC = dark ? null : (uw ? _mixRGB(a.belly,0.38) : a.belly);
-  const pcC = a.pc ? (uw ? _mixRGB(a.pc,0.38).join(',') : a.pc.join(',')) : '0,0,0';
+  const finC = dark ? null : (uw ? _mixRGB(a.fin,0.30).join(',') : a.fin.join(','));
+  const topC = dark ? null : (uw ? _mixRGB(a.top,0.30) : a.top);
+  const bellyC = dark ? null : (uw ? _mixRGB(a.belly,0.30) : a.belly);
+  const pcC = a.pc ? (uw ? _mixRGB(a.pc,0.30).join(',') : a.pc.join(',')) : '0,0,0';
   const breath = Math.sin(t*3.2)*0.02;          // 呼吸体缩放
   const gill = Math.sin(t*3.4)*0.5 + 0.5;       // 鳃盖开合相位 0..1
 
   function bodyPath(){
+    const shape = a.shape || 'oval';
     ctx.beginPath();
-    ctx.moveTo(noseX, 0);
-    ctx.bezierCurveTo(noseX + L*0.06, -H*0.68, noseX + L*0.16, -H*0.80, tailX - L*0.18, -H*0.62);
-    ctx.bezierCurveTo(tailX - L*0.08, -H*0.50, tailX, -H*0.30, tailX, -H*0.10);
-    ctx.quadraticCurveTo(tailX + L*0.02, 0, tailX, H*0.10);
-    ctx.bezierCurveTo(tailX, H*0.30, tailX - L*0.08, H*0.50, tailX - L*0.18, H*0.62);
-    ctx.bezierCurveTo(noseX + L*0.16, H*0.80, noseX + L*0.06, H*0.68, noseX, 0);
+    if(shape==='torpedo'){
+      // 圆筒流线：背腹平直、头钝（草鱼/青鱼/黑鱼/翘嘴）
+      ctx.moveTo(noseX+L*0.005, 0);
+      ctx.quadraticCurveTo(noseX+L*0.01, -H*0.52, noseX+L*0.16, -H*0.60);
+      ctx.lineTo(tailX-L*0.14, -H*0.52);
+      ctx.quadraticCurveTo(tailX, -H*0.34, tailX, -H*0.12);
+      ctx.quadraticCurveTo(tailX+L*0.02, 0, tailX, H*0.12);
+      ctx.quadraticCurveTo(tailX, H*0.34, tailX-L*0.14, H*0.52);
+      ctx.lineTo(noseX+L*0.16, H*0.60);
+      ctx.quadraticCurveTo(noseX+L*0.01, H*0.52, noseX+L*0.005, 0);
+    } else if(shape==='silver'){
+      // 头大身高、腹棱收尾快（鲢/鳙）
+      ctx.moveTo(noseX, -H*0.06);
+      ctx.quadraticCurveTo(noseX+L*0.02, -H*0.50, noseX+L*0.16, -H*0.66);
+      ctx.quadraticCurveTo(noseX+L*0.34, -H*0.74, tailX-L*0.24, -H*0.50);
+      ctx.quadraticCurveTo(tailX-L*0.06, -H*0.30, tailX, -H*0.12);
+      ctx.quadraticCurveTo(tailX+L*0.02, 0, tailX, H*0.12);
+      ctx.quadraticCurveTo(tailX-L*0.06, H*0.30, tailX-L*0.24, H*0.46);
+      ctx.quadraticCurveTo(noseX+L*0.30, H*0.80, noseX+L*0.14, H*0.62);
+      ctx.quadraticCurveTo(noseX+L*0.02, H*0.44, noseX, -H*0.06);
+    } else if(shape==='perch'){
+      // 陡额头高背大嘴（鳜鱼）
+      ctx.moveTo(noseX+L*0.01, -H*0.02);
+      ctx.quadraticCurveTo(noseX+L*0.04, -H*0.62, noseX+L*0.26, -H*0.86);
+      ctx.quadraticCurveTo(noseX+L*0.48, -H*0.92, tailX-L*0.10, -H*0.48);
+      ctx.quadraticCurveTo(tailX, -H*0.28, tailX, -H*0.10);
+      ctx.quadraticCurveTo(tailX+L*0.02, 0, tailX, H*0.10);
+      ctx.quadraticCurveTo(tailX, H*0.28, tailX-L*0.10, H*0.46);
+      ctx.quadraticCurveTo(noseX+L*0.40, H*0.80, noseX+L*0.18, H*0.64);
+      ctx.quadraticCurveTo(noseX+L*0.03, H*0.40, noseX+L*0.01, -H*0.02);
+    } else if(shape==='cat'){
+      // 扁宽平头、后段急收细尾（鲶/黄颡）
+      ctx.moveTo(noseX, -H*0.28);
+      ctx.quadraticCurveTo(noseX+L*0.10, -H*0.46, noseX+L*0.26, -H*0.44);
+      ctx.quadraticCurveTo(noseX+L*0.52, -H*0.40, tailX-L*0.10, -H*0.26);
+      ctx.quadraticCurveTo(tailX, -H*0.18, tailX, -H*0.08);
+      ctx.quadraticCurveTo(tailX+L*0.02, 0, tailX, H*0.08);
+      ctx.quadraticCurveTo(tailX, H*0.18, tailX-L*0.10, H*0.26);
+      ctx.quadraticCurveTo(noseX+L*0.45, H*0.52, noseX+L*0.20, H*0.48);
+      ctx.quadraticCurveTo(noseX+L*0.05, H*0.44, noseX, H*0.20);
+      ctx.quadraticCurveTo(noseX-L*0.01, 0, noseX, -H*0.28);
+    } else {
+      // oval：高身卵圆（鲫鱼/罗非/鲤鱼）
+      ctx.moveTo(noseX, 0);
+      ctx.bezierCurveTo(noseX + L*0.06, -H*0.68, noseX + L*0.16, -H*0.80, tailX - L*0.18, -H*0.62);
+      ctx.bezierCurveTo(tailX - L*0.08, -H*0.50, tailX, -H*0.30, tailX, -H*0.10);
+      ctx.quadraticCurveTo(tailX + L*0.02, 0, tailX, H*0.10);
+      ctx.bezierCurveTo(tailX, H*0.30, tailX - L*0.08, H*0.50, tailX - L*0.18, H*0.62);
+      ctx.bezierCurveTo(noseX + L*0.16, H*0.80, noseX + L*0.06, H*0.68, noseX, 0);
+    }
     ctx.closePath();
   }
 
@@ -171,7 +216,7 @@ function drawFishArt(ctx, id, len, t = 0, opts = {}) {
     ctx.stroke();
     // 眼睛
     const ex = noseX + L*a.head*0.45, ey = -H*0.20, er = Math.max(1.8, L*0.017);
-    const scleraC = uw ? `rgb(${_mixRGB([201,204,208],0.38).join(',')})` : '#c9ccd0';
+    const scleraC = uw ? `rgb(${_mixRGB([201,204,208],0.30).join(',')})` : '#c9ccd0';
     ctx.beginPath(); ctx.arc(ex, ey, er*1.18, 0, Math.PI*2); ctx.fillStyle = scleraC; ctx.fill();
     ctx.beginPath(); ctx.arc(ex, ey, er, 0, Math.PI*2); ctx.fillStyle = '#1b2226'; ctx.fill();
     ctx.beginPath(); ctx.arc(ex - er*0.28, ey - er*0.30, er*0.22, 0, Math.PI*2); ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fill();
