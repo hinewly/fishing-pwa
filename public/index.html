@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+<script>
+  // 双域名适配（同2048等子程序模式）
+  window.DB_HOME = location.hostname.indexOf('daobox.net.cn') !== -1
+    ? 'https://daobox.net.cn' : 'https://daobox.app';
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#0e2a3a">
@@ -182,6 +187,24 @@
 </div>
 
 <div id="toast" class="toast hidden"></div>
+
+<footer class="footer">
+  <a id="home-link" href="javascript:void(0)">← 返回 DaoBox 工具箱</a>
+  <span class="dot">·</span>
+  <span id="contact-email"></span>
+</footer>
+<script>
+  // 联系邮箱运行时拼接（防 obfuscate）
+  (function () {
+    var u = 'support', d = 'daobox.net.cn';
+    var el = document.getElementById('contact-email');
+    if (el) el.innerHTML = '<a href="mailto:' + u + '@' + d + '">' + u + '@' + d + '</a>';
+  })();
+  (function () {
+    var home = document.getElementById('home-link');
+    if (home) home.href = window.DB_HOME + '?src=fishing';
+  })();
+</script>
 
 <script src="fish-data.js"></script>
 <script src="fish-art.js"></script>

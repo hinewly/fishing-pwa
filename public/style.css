@@ -28,7 +28,8 @@ canvas#lake-canvas,canvas#fight-canvas{position:absolute;inset:0;width:100%;heig
 
 .lake-tip{position:absolute;top:64px;left:50%;transform:translateX(-50%);background:rgba(6,20,30,.6);padding:6px 14px;border-radius:20px;font-size:13px;color:var(--dim);white-space:nowrap}
 
-.bottom-bar{position:absolute;bottom:0;left:0;right:0;display:flex;justify-content:center;padding:18px;gap:12px}
+.bottom-bar{position:absolute;bottom:36px;left:0;right:0;display:flex;justify-content:center;padding:18px 18px 4px;gap:12px}
+.fight-btns{bottom:36px}
 .main-btn{border:none;border-radius:14px;padding:16px 34px;font-size:19px;font-weight:600;color:#06222f;background:var(--green);cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.35)}
 .main-btn:disabled{background:#3a5462;color:#7c96a1;box-shadow:none}
 .main-btn:active{transform:translateY(1px)}
@@ -98,3 +99,7 @@ canvas#lake-canvas,canvas#fight-canvas{position:absolute;inset:0;width:100%;heig
 
 /* v0.8.0 顶栏版本号 */
 .app-ver{ opacity:.55; font-size:11px; align-self:center; margin-right:2px; white-space:nowrap; }
+
+.footer{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:center;align-items:center;padding:8px;font-size:13px;color:#9ca3af;pointer-events:auto;z-index:5}
+.footer a{color:#9ca3af;text-decoration:none}
+.footer .dot{margin:0 6px}

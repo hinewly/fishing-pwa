@@ -322,19 +322,21 @@ const Rewards = {
   },
 };
 
-/* 每日限时：钓鱼每天最多2小时（仅限钓鱼） */
+/* 每日限额（v0.9.0 场次制）：每天4场×30分钟，开场即计一场，中途关掉不退不补；暂停可跨关闭恢复 */
 const DailyLimit = {
-  LIMIT: 2*3600,
+  MAX: 4,
   key: 'fishing_daily_v1',
-  today(){ try{ const d=JSON.parse(localStorage.getItem(this.key)); if(d && d.k===new Date().toDateString()) return d; }catch(e){} return {k:new Date().toDateString(), sec:0}; },
-  tick(dt){
-    if(dt<=0) return 0;
-    const d = this.today(); d.sec += dt;
-    localStorage.setItem(this.key, JSON.stringify(d));
-    return d.sec;
+  today(){
+    const k = new Date().toDateString();
+    let d = null;
+    try{ d = JSON.parse(localStorage.getItem(this.key)); }catch(e){}
+    if(!d || d.k !== k){ d = { k, used:0, active:null }; }
+    return d;
   },
-  reached(){ return this.today().sec >= this.LIMIT; },
-  leftMin(){ return Math.max(0, Math.ceil((this.LIMIT-this.today().sec)/60)); },
+  save(d){ localStorage.setItem(this.key, JSON.stringify(d)); },
+  persist(){ const d=this.today(); this.save(d); },
+  reached(){ return this.today().used >= this.MAX; },
+  leftSessions(){ return Math.max(0, this.MAX - this.today().used); },
 };
 
 /* ================= 钓鱼人（半写实坐姿，侧脸朝右） =================
@@ -1409,31 +1411,107 @@ const Session = {
     this.startCount = 0; this.startTime = Date.now();
     this.updateUI();
   },
+  /* v0.9.0 开新一场：计一次场次（开场即算，中途关掉不退不补） */
   start(){
-    this.init();
-    if(DailyLimit.reached()){   // v0.8.0 当日额度已用完：不开始计时
-      this.ended = true;
-      $('#daily-left').textContent = '今天的 2 小时钓鱼时间已用完，明天再来～渔获奖励会一直保留。';
+    const d = DailyLimit.today();
+    if(d.used >= DailyLimit.MAX){
+      this.ended = true; this.updateUI();
+      $('#daily-left').textContent = '今天 4 场钓完啦，明天再来～渔获奖励会一直保留。';
       showPopup('#popup-daily');
-      return;
+      return false;
     }
+    d.used++;
+    d.active = { left: this.DURATION, paused:false, updated: Date.now() };
+    DailyLimit.save(d);
+    this._begin();
+    return true;
+  },
+  _begin(){
     clearInterval(this.timerId);
     this.timerId = setInterval(()=>{
       if(this.paused || this.ended) return;
       this.left--;
+      if(this.left % 5 === 0) this._persist();
       this.updateUI();
       if(this.left <= 0) this.endSession();
     }, 1000);
   },
+  _persist(){
+    if(this.ended) return;
+    const d = DailyLimit.today();
+    d.active = { left: this.left, paused: this.paused, updated: Date.now() };
+    DailyLimit.save(d);
+  },
+  /* v0.9.0 页面加载：恢复暂停场 / 3分钟内的刷新续场 / 否则弹出开场门 */
+  boot(){
+    const d = DailyLimit.today();
+    this.init();
+    if(d.active && d.active.paused){
+      // 暂停中关掉的：可继续，不另计场
+      this.left = d.active.left; this.ended = false; this.paused = true;
+      $('#gate-info').textContent = `上一场暂停中，还剩 ${Math.ceil(this.left/60)} 分钟（不另计场次，今天还能开 ${DailyLimit.leftSessions()} 场新的）`;
+      $('#btn-gate-resume').classList.remove('hidden');
+      $('#btn-gate-start').textContent = `弃掉上一场，开新场（还剩${DailyLimit.leftSessions()}场）`;
+      showPopup('#popup-gate');
+      return;
+    }
+    if(d.active && !d.active.paused && Date.now()-d.active.updated < 180000){
+      // 3分钟内刷新：当作同一场继续，不另计
+      this.left = d.active.left; this.ended = false;
+      this._begin();
+      toast('欢迎回来，本场继续～');
+      return;
+    }
+    d.active = null; DailyLimit.save(d);
+    if(DailyLimit.reached()){
+      $('#daily-left').textContent = '今天 4 场钓完啦，明天再来～渔获奖励会一直保留。';
+      showPopup('#popup-daily');
+      return;
+    }
+    $('#gate-info').textContent = `今日还可钓 ${DailyLimit.leftSessions()} 场 · 每场 30 分钟`;
+    $('#btn-gate-resume').classList.add('hidden');
+    $('#btn-gate-start').textContent = `🎣 开始本场`;
+    showPopup('#popup-gate');
+  },
+  resumeSaved(){   // 门弹窗：继续上一场
+    const d = DailyLimit.today();
+    if(!d.active) return;
+    this.left = d.active.left; this.paused = false; this.ended = false;
+    d.active.paused = false; d.active.updated = Date.now(); DailyLimit.save(d);
+    hidePopup('#popup-gate');
+    this._begin();
+    toast(`⏵ 继续上一场，剩 ${Math.ceil(this.left/60)} 分钟`);
+  },
+  discardSaved(){  // 门弹窗：弃掉暂停场开新场
+    const d = DailyLimit.today(); d.active = null; DailyLimit.save(d);
+    hidePopup('#popup-gate');
+    this.start();
+  },
+  quitToday(){     // 「今天不玩了」：本场作废，出今日战果
+    this.ended = true;
+    clearInterval(this.timerId);
+    const d = DailyLimit.today(); d.active = null; DailyLimit.save(d);
+    hidePopup('#popup-pause');
+    $('#quit-stats').textContent = this.todayStats();
+    showPopup('#popup-quit');
+  },
+  todayStats(){
+    const recs = (Store.load().records||[]).filter(r=>r.t >= new Date().setHours(0,0,0,0));
+    const n = recs.length, jin = recs.reduce((a,r)=>a+r.w*2,0);
+    const RD = Rewards.data();
+    return `今日 ${n} 条 · ${jin.toFixed(1)} 斤 · 已兑 ${Rewards.daysFor(RD.jin)} 天 + ${RD.points} 积分`;
+  },
   pause(){
     if(this.ended) return;
     this.paused = true;
+    this._persist();
     $('#btn-pause').textContent = '▶';
+    $('#pause-timer-info').textContent = `剩余时间 ${this.format()}（暂停后关掉页面，回来可继续本场）`;
     showPopup('#popup-pause');
-    $('#pause-timer-info').textContent = '剩余时间 '+this.format();
   },
   resume(){
     this.paused = false;
+    this._persist();
     $('#btn-pause').textContent = '⏸';
     hidePopup('#popup-pause');
   },
@@ -1494,6 +1572,7 @@ const Session = {
     if(this.ended) return;
     this.ended = true;
     clearInterval(this.timerId);
+    { const d = DailyLimit.today(); d.active = null; DailyLimit.save(d); }
     // 如果正在钓鱼，先收竿
     if(Lake.state!=='idle'){ Lake.reelIn && Lake.reelIn(); Lake.state='idle'; Lake.bobber=null; }
     // 统计本场（用开始时间戳过滤记录）
@@ -1518,14 +1597,13 @@ const Session = {
   newSession(){
     hidePopup('#popup-session');
     if(DailyLimit.reached()){
-      this.ended = true;
-      clearInterval(this.timerId);
-      $('#daily-left').textContent = '今天的 2 小时钓鱼时间已用完，明天再来～渔获奖励会一直保留。';
+      this.ended = true; this.updateUI();
+      $('#daily-left').textContent = '今天 4 场钓完啦，明天再来～渔获奖励会一直保留。';
       showPopup('#popup-daily');
       return;
     }
     this.start();
-    toast(`🎣 新一场开始，限时30分钟（今日还能钓 ${DailyLimit.leftMin()} 分钟）`);
+    toast(`🎣 新一场开始，限时30分钟（今天还剩 ${DailyLimit.leftSessions()} 场）`);
   }
 };
 
@@ -1559,7 +1637,22 @@ const Game = {
     $('#btn-music').addEventListener('click', ()=>{
       AudioSys.unlock(); Session.toggleMusic();
     });
-    Session.start();
+    Session.boot();
+    $('#btn-gate-start').addEventListener('click', ()=>{
+      const d = DailyLimit.today();
+      if(d.active && d.active.paused) Session.discardSaved(); else Session.start();
+    });
+    $('#btn-gate-resume').addEventListener('click', ()=>Session.resumeSaved());
+    $('#btn-quit-confirm').addEventListener('click', ()=>{
+      hidePopup('#popup-quit-confirm');
+      $('#quit-stats').textContent = Session.todayStats();
+      showPopup('#popup-quit');
+    });
+    $('#btn-quit-cancel').addEventListener('click', ()=>hidePopup('#popup-quit-confirm'));
+    $('#btn-quit-close').addEventListener('click', ()=>{
+      window.close();
+      setTimeout(()=>{ toast('直接关闭这个标签页/App 就行，渔获已保存', 4000); }, 300);
+    });
     // 路亚：主按钮按住收线
     const castBtn = $('#btn-cast');
     castBtn.addEventListener('pointerdown', ()=>{
@@ -1647,10 +1740,7 @@ const Game = {
     const dt = Session.paused ? 0 : Math.min(0.05, (t-this.last)/1000 || 0.016);
     this.last = t; this.animT = Session.paused ? this.animT : t/1000;
     GamepadFx.poll();
-    if(dt>0 && DailyLimit.tick(dt) >= DailyLimit.LIMIT && !Session.ended){
-      Session.endSession();
-      toast('⏰ 今天 2 小时钓鱼时间用完了，明天再来！', 4000);
-    }
+
     if(this.screen==='lake'){
       Lake.update(dt);
       Lake.draw(this.animT);

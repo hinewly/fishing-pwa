@@ -12,6 +12,7 @@
 
 v0.1.0 可玩 Demo 本地完成并通过无头浏览器全流程实测（选位→抛竿→等口→刺鱼→搏鱼→抄网→入护→渔获清单），页面零报错。**未部署**，等用户试玩确认手感后再走部署流程。
 
+- v0.7.7（用户反馈：没有返回工具箱按钮）：①加底部 footer（同 2048/gomoku 模式）：「← 返回 DaoBox 工具箱」链接 + contact-email 运行时拼接，DB_HOME 双域名适配(daobox.net.cn/daobox.app)，home.href = DB_HOME+'?src=fishing' ②bottom-bar 上移 36px 避免和 footer 重叠 ③SW v22
 ## 待办（新任务继续做）
 
 1. **名牌位置**：v0.7.5 放回钓点上方(sy-132)，如果还挡「露5目」可改成 hover/点击显示
