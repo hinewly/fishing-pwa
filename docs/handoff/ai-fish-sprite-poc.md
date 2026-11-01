@@ -1,7 +1,7 @@
 # AI鱼图贴图 POC 交接
 
-- last_updated: 2026-11-02 01:20
-- status: active
+- last_updated: 2026-11-02 01:25
+- status: done
 - version: v0.9.4（本地未发布）
 - repo: /Users/zoujiean/CodeX/fishing-pwa
 
@@ -96,3 +96,10 @@
 - 看漂放大镜上移（桌面 bottom:132px / 手机 184px+safe-area），不再挡岸边斗笠钓鱼人
 - sw.js CACHE→fishing-v36，新贴图已加预缓存；线上已验证 v1.0.1 与新图 200
 - 原图/抠图留档：_temp-screenshots/2026-11/vidu-fish-gen/
+
+## 收尾（2026-11-02 01:25，用户验收 80 分通过）
+
+- v1.0.2：看漂放大镜最终方案=固定在屏幕右侧水面（桌面 right:14px/bottom:120px，手机 right:14px/bottom:150px+safe-area），左侧钓鱼人永远不挡
+- 教训：面板纯"上移"无效——面板高约190px与人同处左下竖区，必须横移到右侧才彻底解决
+- 本任务完结：7 种鱼 AI 贴图全部上线（鲤鱼/鳜鱼/黑鱼/草鱼/鲫鱼/鲶鱼/青鱼），鲫鱼=浅滩0.2-1.5斤，青鱼=深水8-60斤巨物；搏鱼尺寸 60+55*sqrt(weight)
+- 待办留给后续：罗非鱼等5种仍隐藏；AI 抛竿动作未做；通知（新用户注册推送）搁置等用户定逻辑
