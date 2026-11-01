@@ -38,17 +38,21 @@ canvas#lake-canvas,canvas#fight-canvas{position:absolute;inset:0;width:100%;heig
 .main-btn.net{background:#4fb3ff}
 .fight-btns .main-btn{min-width:150px}
 
-.fight-hud{position:absolute;top:56px;left:16px;right:16px;display:flex;flex-direction:column;gap:8px}
-.meter label{font-size:12px;color:var(--dim)}
-.bar{position:relative;height:16px;background:rgba(0,0,0,.45);border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,.15)}
-.fill{position:absolute;inset:0;width:0%;background:linear-gradient(90deg,#3ecf72,#e7d84a);border-radius:8px;transition:none}
-.fill.fish{background:linear-gradient(90deg,#4fb3ff,#8fd0ff)}
-.redline{position:absolute;right:0;top:0;bottom:0;width:9%;background:rgba(255,60,60,.35);border-left:2px solid rgba(255,80,80,.8)}
-.fight-msg{min-height:20px;font-size:15px;font-weight:600;color:var(--gold);text-shadow:0 1px 3px rgba(0,0,0,.6);text-align:center}
+.fight-hud{position:absolute;top:56px;left:12px;right:auto;display:flex;flex-direction:column;align-items:flex-start;gap:8px;pointer-events:none;z-index:4}
+.gauge-row{display:flex;gap:8px;align-items:flex-end}
+.gauge{width:42px;display:flex;flex-direction:column;align-items:center;gap:4px;background:rgba(6,20,30,.16);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:6px 4px;backdrop-filter:none}
+.gauge-value{font-size:10px;font-weight:700;color:rgba(255,255,255,.88);font-variant-numeric:tabular-nums;line-height:1}
+.gauge-tube{position:relative;width:8px;height:70px;background:rgba(255,255,255,.10);border-radius:6px;overflow:hidden;border:1px solid rgba(255,255,255,.10)}
+.gauge-fill{position:absolute;left:0;right:0;bottom:0;height:0%;border-radius:6px;transition:none}
+.gauge-fill.tension{background:linear-gradient(180deg,#ff5252,#ffb02e 45%,#3ecf72)}
+.gauge-fill.stamina{background:linear-gradient(180deg,#0f5f8f,#4fb3ff 70%,#a8e4ff)}
+.gauge label{font-size:9px;color:rgba(255,255,255,.55);line-height:1}
+.gauge .redline{position:absolute;left:0;right:0;top:0;height:9%;background:rgba(255,60,60,.35);border-bottom:2px solid rgba(255,80,80,.8)}
+.fight-msg{min-height:20px;font-size:14px;font-weight:600;color:var(--gold);text-shadow:0 1px 3px rgba(0,0,0,.6);text-align:right;max-width:180px}
 
 .popup{position:fixed;inset:0;background:rgba(4,14,22,.72);display:flex;align-items:center;justify-content:center;z-index:50}
 .popup.hidden{display:none}
-.popup-card{background:var(--panel);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:22px;width:min(92vw,420px);text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+.popup-card{background:var(--panel);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:22px;width:min(92vw,420px);max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);overflow-y:auto;-webkit-overflow-scrolling:touch;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.5)}
 #catch-canvas{width:100%;height:150px;display:block}
 .catch-name{font-size:24px;font-weight:700}
 .catch-name .stars{color:var(--gold)}
@@ -141,4 +145,10 @@ canvas#lake-canvas,canvas#fight-canvas{position:absolute;inset:0;width:100%;heig
   .main-btn{padding:14px 26px;font-size:18px}
   #mag{bottom:calc(120px + env(safe-area-inset-bottom))}
   .footer{font-size:11px;padding:6px}
+
+  /* 弹窗内容分层：长内容(帮助/结算等)限高滚动，关闭按钮必须始终可达 */
+  .popup{padding:12px}
+  .popup-card{width:calc(100vw - 20px);max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px - env(safe-area-inset-bottom));padding:18px 14px}
+  .help-body{font-size:13px;line-height:1.7}
+  .log-list{max-height:none}
 }
