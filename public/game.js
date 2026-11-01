@@ -278,7 +278,7 @@ const Store = {
 
 
 /* ================= 版本 ================= */
-const APP_VERSION = 'v1.0.0';
+const APP_VERSION = 'v1.0.1';
 
 /* ================= 奖励系统（v0.8.0 用户拍板）
  * 100斤 = 1天注册时长 + 100积分，按充值周期内累计斤数四舍五入到百斤
@@ -1326,7 +1326,7 @@ const Fight = {
     const yy = f.snag ? Math.min(H*0.86, fishY*1.25) : fishY;
     // v0.9.5 按鱼种体型系数区分大小；上限放宽到 0.42/0.34，青鱼巨物有压迫感但不糊满屏
     const sizeF = (typeof FISH_SPRITE_SCALE==='object' && FISH_SPRITE_SCALE[f.fish.species.id]) || 1;
-    const size = Math.min(Math.min(46 + f.fish.weight*20, W*0.38, H*0.30) * sizeF, W*0.42, H*0.34);
+    const size = Math.min(60 + 55*Math.sqrt(f.fish.weight), W*0.55, H*0.42) * sizeF;  // v1.0.1 体重开根号拉开体格差
     const fishAngle = Math.sin(f.t*(2.2+S))*0.22*(1+S*0.6) + (f.dash?-0.2:0) + (f.stamina<=0 ? Math.sin(f.t*4.5)*0.3 : 0);
     c.save();
     c.translate(fishX, yy);
