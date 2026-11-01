@@ -5,6 +5,38 @@
  * opts.silhouette : 剪影模式 —— 纯深色形状（渔获清单未解锁占位用）
  * v0.6.0 微动作：呼吸体缩放 / 鳃盖开合 / 嘴张合 / 胸鳍划水 / 尾鳍摆动
  */
+
+/* v0.9.2 AI鱼图贴图：首条用 Vidu 生成鲤鱼做效果验证
+ * 静态图 + Canvas 切片正弦形变 => 伪游动；后续鱼种复用同一机制。
+ */
+const FISH_SPRITE_FILES = { liyu: 'fish-sprites/liyu.png' };
+const FISH_SPRITES = {};
+if (typeof Image !== 'undefined') {
+  Object.entries(FISH_SPRITE_FILES).forEach(([id, src]) => {
+    const img = new Image();
+    img.src = src + '?v=v0.9.4';
+    FISH_SPRITES[id] = img;
+  });
+}
+
+function _drawFishSprite(ctx, img, len, t = 0, opts = {}) {
+  const w = len, h = len * (img.naturalHeight / img.naturalWidth);
+  // 尾部摆幅比头部大，形成真实的身体推进波；水下动作略大。
+  const amp = (opts.underwater ? 0.062 : 0.032) * len;
+  const slices = 28, sw = img.naturalWidth / slices, dw = w / slices;
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  if (opts.underwater) ctx.filter = 'brightness(0.84) saturate(0.94)';
+  for (let i = 0; i < slices; i++) {
+    const nx = (i + 0.5) / slices;
+    const dy = Math.sin(t * 7.2 - nx * 3.4) * amp * Math.pow(nx, 1.4);
+    ctx.drawImage(img, i * sw, 0, sw, img.naturalHeight,
+      -w / 2 + i * dw, -h / 2 + dy, dw + 0.9, h);
+  }
+  ctx.restore();
+}
+
 const FISH_ART = {
   jiyu:      { shape:'oval',    top:[136,148,92],  belly:[232,232,212], fin:[208,138,88],  hf:.40, head:.28, tail:.24, pattern:'scale', pc:[100,110,70], dorsal:'mid', forked:.5 },
   luofei:    { shape:'oval',    top:[92,116,86],   belly:[214,218,196], fin:[64,94,68],    hf:.38, head:.30, tail:.22, pattern:'stripes', pc:[46,66,48], dorsal:'long', forked:.45 },
@@ -27,6 +59,12 @@ function _mixRGB(c, k){
 
 function drawFishArt(ctx, id, len, t = 0, opts = {}) {
   const a = FISH_ART[id] || FISH_ART.jiyu;
+  // AI鱼图优先：未解锁剪影仍走 Canvas 路径，保证图鉴占位逻辑不变。
+  const sprite = FISH_SPRITES[id];
+  if (!opts.silhouette && sprite && sprite.complete && sprite.naturalWidth > 0) {
+    _drawFishSprite(ctx, sprite, len, t, opts);
+    return;
+  }
   const sway = Math.sin(t * 6) * 0.10;
   const L = len, hf = a.hf, H = L * hf;
   const noseX = -L/2, tailX = L/2 - L*a.tail;
