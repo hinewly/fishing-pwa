@@ -3,7 +3,7 @@
  * 其余资源：缓存优先（版本随 CACHE 递增整体换新）
  */
 const CACHE = 'fishing-v28';
-const ASSETS = ['./','index.html','style.css','fish-data.js','fish-art.js','fish-sprites/liyu.png','game.js','manifest.json','icons/icon-192.png','icons/icon-512.png','icons/apple-touch-icon.png'];
+const ASSETS = ['./','index.html','style.css','fish-data.js','fish-art.js','game.js','manifest.json','icons/icon-192.png','icons/icon-512.png','icons/apple-touch-icon.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())); });
 self.addEventListener('fetch', e => {
