@@ -278,7 +278,7 @@ const Store = {
 
 
 /* ================= 版本 ================= */
-const APP_VERSION = 'v0.9.9';
+const APP_VERSION = 'v1.0.0';
 
 /* ================= 奖励系统（v0.8.0 用户拍板）
  * 100斤 = 1天注册时长 + 100积分，按充值周期内累计斤数四舍五入到百斤
@@ -509,7 +509,7 @@ function drawShoreAngler(c, W, H, t, lake){
     c.fillStyle = '#7d6a44';
     c.beginPath(); c.ellipse(rx+sway, base-40-i*5, 2.4, 7, sway*0.02, 0, Math.PI*2); c.fill();
   }
-  // 钓鱼人（v0.7.6：路亚收线时沿岸缓步走动）
+  // 钓鱼人（v0.7.6：路亚收线时沿岸缓步走动；v1.0.0 换 AI 斗笠人贴图 + 抛竿整体动作）
   const walking = lake.mode==='lure' && lake.state==='retrieving';
   const walkX = walking ? Math.sin(performance.now()/1000 * 0.4) * W*0.045 : 0;
   const ax = W*0.115 + walkX, ay = H*0.905;
@@ -525,8 +525,32 @@ function drawShoreAngler(c, W, H, t, lake){
   }
   if(lake.mode==='lure' && mode!=='cast'){ mode='stand'; drawAngler.standK = 1; }
   else if(mode!=='cast') drawAngler.standK = 0;
+  // v1.0.0 AI 钓鱼人贴图（含竿，镜像后面向右）：整体旋转模拟抛竿动作，竿稍照常输出
+  const aim = (typeof FIGHT_ANGLER_IMG!=='undefined') ? FIGHT_ANGLER_IMG : null;
+  if (aim && aim.complete && aim.naturalWidth > 0) {
+    const ah = Math.min(W,H)*0.185, aw = ah*1.247;
+    let theta = 0.02*Math.sin(t*1.4);   // 待机轻微起伏
+    if (lake.state==='casting' && lake.castAnim){
+      const T = lake.castAnim.t;
+      if(T < 0.45) theta = 0.5*(T/0.45);                              // 后仰蓄力
+      else if(T < 0.62) theta = 0.5 - ((T-0.45)/0.17)*0.75;           // 挥竿甩出
+      else if(T < 1.12) theta = -0.25 + Math.min(1,(T-0.62)/0.5)*0.27; // 收竿坐回
+      else theta = 0.02;
+    } else if (lake.state==='biting') { theta = -0.12; }              // 刺鱼前倾
+    c.save();
+    c.translate(ax, ay);
+    c.scale(-1, 1);
+    c.rotate(theta);
+    c.drawImage(aim, -aw*0.88, -ah*0.98, aw, ah);
+    c.restore();
+    // 竿尖：图内分数(0.018,0.019)，镜像后 x 取 1-0.018，绕脚底旋转
+    const lx = aw*(0.982-0.88), ly = -ah*0.961;
+    const cs = Math.cos(theta), sn = Math.sin(theta);
+    const rx = lx*cs - ly*sn, ry = lx*sn + ly*cs;
+    return { tipX: ax - rx, tipY: ay + ry };
+  }
+  // 兜底：AI 图未加载时沿用旧卡通剪影
   drawAngler(c, ax, ay, Math.min(W,H)/430*1.15, t, mode, false);
-  // 竿稍坐标（与 drawAngler 内部几何一致：握点(27,-17) rotate(rodDrop) 竿尖(105,-52)）
   const s = Math.min(W,H)/430*1.15;
   const rodDrop = mode==='cast' ? (drawAngler.castDrop ?? 0.02) : mode==='bite' ? 0.35 : 0.02;
   const standK = drawAngler.standK ?? 0;
@@ -539,7 +563,7 @@ function drawShoreAngler(c, W, H, t, lake){
 
 /* ================= 湖面场景 ================= */
 const SPOTS = [
-  { id:'shallow', name:'浅滩',   diff:1, stars:1, x:.22, y:.52, tip:'小鱼池：全是2斤内的小鱼，提竿就上' },
+  { id:'shallow', name:'浅滩',   diff:1, stars:1, x:.22, y:.52, tip:'练手池：口密上鱼快，重量封顶小' },
   { id:'weed',    name:'水草区', diff:2, stars:2, x:.80, y:.58, tip:'猛鱼池：3斤+黑鱼鳜鱼出没，得会遛鱼' },
   { id:'deep',    name:'深水区', diff:3, stars:3, x:.52, y:.42, tip:'巨物池：4斤起步能上几十斤，最考验遛鱼' },
 ];
@@ -614,8 +638,8 @@ const Lake = {
       const n = diff===1 ? (Math.random()<0.6?0:1) : diff===3 ? (Math.random()<0.5?1:2) : (Math.random()<0.55?0:1);
       for(let i=0;i<n;i++) this.fakes.push(rand(1.5, Math.max(2, this.biteAt-1)));
       this.fakes.sort((a,b)=>a-b);
-      btn.textContent = '刺鱼！';
-      $('#lake-tip').textContent = '等口……看漂：顿1目是假口，吞2目以上再提！';
+      btn.textContent = '提竿 / 收竿';
+      $('#lake-tip').textContent = '等口……吞2目以上提竿；没耐心点「提竿/收竿」重抛';
     } else {
       this.state='retrieving'; this.retProg=0; this.holding=false;
       this.hookedFish = rollFish(this.spot, 'lure');
@@ -672,13 +696,15 @@ const Lake = {
       a.t += dt;
       const W = innerWidth, H = innerHeight;
       if(!a.launched && a.t >= 0.62){
-        // 挥竿到位：漂从竿稍飞出（抛物线）
+        // 挥竿到位：漂从竿稍飞出（抛物线）；v1.0.0 竿稍取 AI 钓鱼人挥出姿态(θ=-0.25)的实际位置
         a.launched = true; a.launchT = a.t;
-        const s = Math.min(W,H)/430*1.15, ax = W*0.115, ay = H*0.905;
-        const rd = 0.35;
-        const dx = 105*Math.cos(rd) + 52*Math.sin(rd);
-        const dy = -(105*Math.sin(rd)) - 52*Math.cos(rd) + 2*Math.cos(rd);
-        a.from = { x: ax + 27*s + dx*s, y: ay - 17*s + dy*s };
+        const th = -0.25;
+        const ah = Math.min(W,H)*0.185, aw = ah*1.247;
+        const ax0 = W*0.115, ay0 = H*0.905;
+        const lx = aw*(0.982-0.88), ly = -ah*0.961;
+        const cs0 = Math.cos(th), sn0 = Math.sin(th);
+        const rx0 = lx*cs0 - ly*sn0, ry0 = lx*sn0 + ly*cs0;
+        a.from = { x: ax0 - rx0, y: ay0 + ry0 };
         a.to = { x: this.spot.x*W, y: this.spot.y*H };
         AudioSys.tick();
       }
@@ -1291,7 +1317,9 @@ const Fight = {
     const baseJump = (f.dash ? Math.max(0,Math.sin(f.t*9))*H*0.14 : Math.max(0,Math.sin(f.t*1.7))*H*0.055*(0.45+surfR));
     const burstJump = f.jumpT>0 ? Math.sin((1 - f.jumpT/0.55)*Math.PI) * H*0.13 : 0;
     const jump = baseJump + burstJump;
-    const fishY = WATER_Y + H*0.01 + H*0.02*surfR + Math.sin(f.t*2.2)*H*0.02 - jump;
+    // v1.0.0 鱼有纵深：体力足时周期性下潜冲底，钻底直接到底，力竭才浮近水面
+    const dive = f.snag ? 0.9 : (0.30 + 0.45*(0.5+0.5*Math.sin(f.t*0.5))) * (1 - surfR*0.55);
+    const fishY = WATER_Y + (H-WATER_Y)*(0.10 + 0.55*dive) - jump;
     // v0.7.1 挣扎：鱼在水下左右冲拉，体力越足摆得越猛
     const struggle = Math.sin(f.t*(1.6+S*1.4)) * (24+42*S) * (f.stamina<=0?0.35:1);
     const fishX = W*(0.78 - f.progress*0.6) + Math.sin(f.t*3.1)*26*(1+S) + struggle;
@@ -1334,9 +1362,9 @@ const Fight = {
     // v0.9.5 AI钓鱼人贴图（右下角，面朝左侧水面，自带细长直竿；整体随鱼挣扎小幅摆动）
     const aim = (typeof FIGHT_ANGLER_IMG!=='undefined') ? FIGHT_ANGLER_IMG : null;
     if (aim && aim.complete && aim.naturalWidth > 0) {
-      const aw = Math.min(W*0.62, H*0.52);
-      const ah = aw * (aim.naturalHeight/aim.naturalWidth);
-      const anchorX = W*0.99, anchorY = WATER_Y + 12;   // 底部右侧锚点（脚底）
+      const ah = Math.min(H*0.30, W*0.40);              // v1.0.0 按高度定尺寸，人完整可见
+      const aw = ah * (aim.naturalWidth/aim.naturalHeight);
+      const anchorX = W*0.99, anchorY = WATER_Y + H*0.08; // 脚踩近岸，不再顶到画面上缘
       const rodSway = Math.sin(f.t*(1.6+S*1.4)) * (0.025+0.045*S) * (f.stamina<=0?0.35:1)
                       + f.tension/2200 + (f.dash?0.03:0);   // 张力越大竿越下压
       c.save();

@@ -23,11 +23,14 @@ const RARITY_INFO = { 1:{label:'普通',color:'#9aa5b1',stars:'★'}, 2:{label:'
 
 function rollFish(spot, mode){
   let pool = FISH_SPECIES.filter(f=>!f.hidden && f.spots.includes(spot.id));
+  if(!pool.length) pool = FISH_SPECIES.filter(f=>!f.hidden);   // v1.0.0 兜底
   const diff = spot.diff || 2;
   // v0.7.0 分区鱼情：浅滩全小鱼(≤2斤) / 深水3斤+ / 水草巨物(4斤+)
   if(diff===1) pool = pool.filter(f=>f.wMax<=2);
   if(diff===2) pool = pool.filter(f=>f.wMax>=3);
   if(diff===3) pool = pool.filter(f=>f.wMax>=4);
+  // v1.0.0 兜底：小鱼种隐藏后浅滩会被过滤成空池（咬钩计算崩溃、全场无口），回退到全部可见鱼种
+  if(!pool.length) pool = FISH_SPECIES.filter(f=>!f.hidden);
   // 权重：普通 10 / 稀有 3 / 传说 1；路亚攻击鱼 ×5；水草区大物概率大增
   const weights = pool.map(f => {
     let w = f.rarity===1?10:(f.rarity===2?3:1);
