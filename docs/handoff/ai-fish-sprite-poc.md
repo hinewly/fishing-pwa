@@ -1,6 +1,6 @@
 # AI鱼图贴图 POC 交接
 
-- last_updated: 2026-11-02 00:45
+- last_updated: 2026-11-02 01:20
 - status: active
 - version: v0.9.4（本地未发布）
 - repo: /Users/zoujiean/CodeX/fishing-pwa
@@ -88,3 +88,11 @@
 - `public/sw.js`
 - `/Users/zoujiean/CodeX/docs/ideas/2026-11-01-钓鱼视频鱼图与钓手形象升级.md`
 - `/Users/zoujiean/CodeX/_temp-screenshots/2026-11/钓鱼游戏-搏鱼画面橙鲤鱼效果-20261101.png`
+
+## 2026-11-02 更新（v1.0.1 已上线）
+
+- 7 种可钓鱼全部换 AI 贴图：鲤鱼/鳜鱼/黑鱼/草鱼/鲫鱼/鲶鱼/青鱼（鲫鱼=浅滩 0.2-1.5 斤；青鱼=深水 8-60 斤巨物），其余 luofei/huangsang/lianyu/yongyu/qiaozui 保持 hidden
+- 搏鱼尺寸公式改为 60+55*sqrt(weight)，上限 W*0.55/H*0.42，体重差距直观可见
+- 看漂放大镜上移（桌面 bottom:132px / 手机 184px+safe-area），不再挡岸边斗笠钓鱼人
+- sw.js CACHE→fishing-v36，新贴图已加预缓存；线上已验证 v1.0.1 与新图 200
+- 原图/抠图留档：_temp-screenshots/2026-11/vidu-fish-gen/
