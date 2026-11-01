@@ -13,7 +13,7 @@ const FISH_SPRITE_FILES = { liyu: 'fish-sprites/liyu.webp', guiyu: 'fish-sprites
 // v0.9.5 体型系数：搏鱼画面按鱼种区分大小（鳜鱼最小，青鱼巨物最大）
 const FISH_SPRITE_SCALE = { liyu:1, guiyu:0.82, heiyu:0.92, caoyu:1.12, nianyu:1.08, qingyu:1.35 };
 // v0.9.5 AI钓鱼人（斗笠中年，含竿）：搏鱼画面替换临时剪影
-const FIGHT_ANGLER_IMG = (typeof Image === 'undefined') ? null : (() => { const i = new Image(); i.src = 'fish-sprites/angler.png?v=v0.9.6'; return i; })();
+const FIGHT_ANGLER_IMG = (typeof Image === 'undefined') ? null : (() => { const i = new Image(); i.src = 'fish-sprites/angler.webp?v=v0.9.7'; return i; })();
 const FISH_SPRITES = {};
 if (typeof Image !== 'undefined') {
   Object.entries(FISH_SPRITE_FILES).forEach(([id, src]) => {
