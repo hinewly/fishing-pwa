@@ -390,7 +390,7 @@ const DailyLimit = {
 function drawAngler(c, x, y, s, t, mode, silhouette, mirror){
   c.save(); c.translate(x, y); c.scale(mirror?-s:s, s);
   const C = silhouette
-    ? { hat:'rgba(18,28,36,0.9)', shirt:'rgba(18,28,36,0.9)', vest:'rgba(18,28,36,0.9)', pants:'rgba(18,28,36,0.9)', boot:'rgba(18,28,36,0.9)', skin:'rgba(18,28,36,0.9)', rod:'#8a9aa4' }
+    ? { hat:'rgba(214,190,158,.78)', shirt:'rgba(104,126,98,.78)', vest:'rgba(76,95,74,.78)', pants:'rgba(64,82,102,.78)', boot:'rgba(38,45,52,.78)', skin:'rgba(198,148,116,.78)', rod:'#7b6a4d' }
     : { hat:'#d9b36c', hatDark:'#c39f55', shirt:'#75855a', vest:'#57653f', pants:'#3d4d5e', boot:'#2e3136', skin:'#d8a07a', rod:'#8a6b46' };
   const k = (mode==='cast' || mode==='stand') ? (drawAngler.standK ?? 0) : 0;   // 0=坐 1=站
   const lean = mode==='cast'
@@ -1051,7 +1051,7 @@ const Fight = {
       diff: fish.diff||2,
       tension: 20, progress: 0.12, stamina: 1, t: 0,
       ripples: [], splashT: 0.5,
-      dash:null, nextDash: rand(3,7), snag:null, snagHold:0, wash:null,
+      dash:null, nextDash: rand(3,7), snag:null, snagHold:0, wash:null, nextJump: rand(3,6), jumpT:0,
       redTime:0, slack:0, fightSec:0, netT:0, _reelT:0, _creakT:0, washMissed:false,
     };
     const D = this.F.diff;
@@ -1242,6 +1242,13 @@ const Fight = {
       return;
     }
 
+    // —— 随机跃水：不是持续跳，而是有节奏地窜出水面 ——
+    if(!f.dash && !f.snag && !f.wash){
+      f.nextJump -= dt;
+      if(f.nextJump<=0){ f.jumpT = 0.55; f.nextJump = rand(4,8); }
+    }
+    if(f.jumpT>0) f.jumpT = Math.max(0, f.jumpT-dt);
+
     // —— 浪花：体力越少越贴水面翻花，冲刺也炸水 ——
     const surf = 1 - f.stamina;
     if(surf>0.3 || f.dash){
@@ -1266,28 +1273,45 @@ const Fight = {
     const c = this.ctx, W = innerWidth, H = innerHeight, f = this.F;
     if(!f) return;
     const S = f.fish.strength;   // v0.7.1 挣扎摆动需要
-    const g = c.createLinearGradient(0,0,0,H);
-    g.addColorStop(0,'#1b4a5e'); g.addColorStop(1,'#081e2c');
-    c.fillStyle = g; c.fillRect(0,0,W,H);
+    const WATER_Y = H*0.28;
+    // 天空 / 水面分层：人影不再泡在水里，鱼可跨水面挣扎
+    const sky = c.createLinearGradient(0,0,0,WATER_Y);
+    sky.addColorStop(0,'#0f2d3d'); sky.addColorStop(1,'#2a6b84');
+    c.fillStyle=sky; c.fillRect(0,0,W,WATER_Y);
+    const water = c.createLinearGradient(0,WATER_Y,0,H);
+    water.addColorStop(0,'#1b4a5e'); water.addColorStop(1,'#081e2c');
+    c.fillStyle=water; c.fillRect(0,WATER_Y,W,H-WATER_Y);
     for(let i=0;i<3;i++){
-      c.save(); c.translate(W*(0.25+i*0.25),0); c.rotate(0.18);
+      c.save(); c.translate(W*(0.25+i*0.25),WATER_Y); c.rotate(0.18);
       c.fillStyle = 'rgba(180,220,230,0.045)';
-      c.fillRect(-40,0,80,H); c.restore();
+      c.fillRect(-40,0,80,H-WATER_Y); c.restore();
     }
-    // 体力越少越贴近水面（画面上部）
+    // 体力越少越贴近水面；冲刺/低体力时有跃出机会
     const surfR = 1 - f.stamina;
-    const fishY = H*(0.52 - 0.26*surfR*surfR) + Math.sin(f.t*2.2)*30 + (f.dash?Math.sin(f.t*9)*14:0);
+    const baseJump = (f.dash ? Math.max(0,Math.sin(f.t*9))*H*0.14 : Math.max(0,Math.sin(f.t*1.7))*H*0.055*(0.45+surfR));
+    const burstJump = f.jumpT>0 ? Math.sin((1 - f.jumpT/0.55)*Math.PI) * H*0.13 : 0;
+    const jump = baseJump + burstJump;
+    const fishY = WATER_Y + H*0.01 + H*0.02*surfR + Math.sin(f.t*2.2)*H*0.02 - jump;
     // v0.7.1 挣扎：鱼在水下左右冲拉，体力越足摆得越猛
     const struggle = Math.sin(f.t*(1.6+S*1.4)) * (24+42*S) * (f.stamina<=0?0.35:1);
     const fishX = W*(0.78 - f.progress*0.6) + Math.sin(f.t*3.1)*26*(1+S) + struggle;
     const yy = f.snag ? Math.min(H*0.86, fishY*1.25) : fishY;
-    const size = Math.min(46 + f.fish.weight*20, W*0.38, H*0.30);   // v0.7.1 封顶：大而不吓人
+    // v0.9.5 按鱼种体型系数区分大小；上限放宽到 0.42/0.34，青鱼巨物有压迫感但不糊满屏
+    const sizeF = (typeof FISH_SPRITE_SCALE==='object' && FISH_SPRITE_SCALE[f.fish.species.id]) || 1;
+    const size = Math.min(Math.min(46 + f.fish.weight*20, W*0.38, H*0.30) * sizeF, W*0.42, H*0.34);
+    const fishAngle = Math.sin(f.t*(2.2+S))*0.22*(1+S*0.6) + (f.dash?-0.2:0) + (f.stamina<=0 ? Math.sin(f.t*4.5)*0.3 : 0);
     c.save();
     c.translate(fishX, yy);
-    c.rotate(Math.sin(f.t*(2.2+S))*0.22*(1+S*0.6) + (f.dash?-0.2:0) + (f.stamina<=0 ? Math.sin(f.t*4.5)*0.3 : 0));
+    c.rotate(fishAngle);
     c.scale(-1,1);
     drawFishArt(c, f.fish.species.id, size, f.t, {underwater:true});
     c.restore();
+    // 鱼钩必须挂在鱼嘴：镜像后鱼头朝右，嘴点沿鱼体轴取前方
+    const mouthX = fishX + size*0.47*Math.cos(fishAngle);
+    const mouthY = yy + size*0.47*Math.sin(fishAngle);
+    // 水下部分统一压暗，保留水面上部分的亮度
+    c.fillStyle='rgba(8,40,58,0.24)';
+    c.fillRect(0,WATER_Y,W,H-WATER_Y);
     // 浪花圈 + 白沫
     f.ripples = f.ripples.filter(r => f.t - r.born < 1.1);
     for(const r of f.ripples){
@@ -1307,29 +1331,50 @@ const Fight = {
         c.fill();
       }
     }
-    // 持竿人剪影（右下角，面朝左侧水面，张力越大竿压得越低）
-    const fs = Math.min(W,H)/430*1.9;
-    const fax = W, fay = H + 6;
-    // v0.7.1 竿随鱼摆：鱼左右冲拉+深浅变化带动竿尖俯仰
-    const rodSway = Math.sin(f.t*(1.6+S*1.4)) * (0.05+0.09*S) * (f.stamina<=0?0.35:1);
-    const depthPull = clamp((yy - H*0.45)/H, -0.2, 0.4);
-    drawAngler.fightDrop = -(0.10 + f.tension/500) + rodSway*0.6 + depthPull*0.3 + (f.dash?0.06:0);
-    drawAngler(c, fax, fay, fs, f.t, 'fight', true, true);
-    // 竿尖世界坐标（镜像：local x 取反；fight 时 rodDrop≈0.55 随张力增加）
-    const rodDrop = drawAngler.fightDrop || 0.20;
-    const cs = Math.cos(rodDrop), sn = Math.sin(rodDrop);
-    const tipLx = 27 + 105*cs + 52*sn;   // 旋转后的竿尖 local x
-    const tipLy = -17 + 105*sn - 52*cs;  // 旋转后的竿尖 local y
-    const tipX = fax - tipLx*fs, tipY = fay + tipLy*fs;
+    // v0.9.5 AI钓鱼人贴图（右下角，面朝左侧水面，自带细长直竿；整体随鱼挣扎小幅摆动）
+    const aim = (typeof FIGHT_ANGLER_IMG!=='undefined') ? FIGHT_ANGLER_IMG : null;
+    if (aim && aim.complete && aim.naturalWidth > 0) {
+      const aw = Math.min(W*0.62, H*0.52);
+      const ah = aw * (aim.naturalHeight/aim.naturalWidth);
+      const anchorX = W*0.99, anchorY = WATER_Y + 12;   // 底部右侧锚点（脚底）
+      const rodSway = Math.sin(f.t*(1.6+S*1.4)) * (0.025+0.045*S) * (f.stamina<=0?0.35:1)
+                      + f.tension/2200 + (f.dash?0.03:0);   // 张力越大竿越下压
+      c.save();
+      c.translate(anchorX, anchorY);
+      c.rotate(rodSway);
+      c.drawImage(aim, -aw, -ah, aw, ah);
+      c.restore();
+      // 竿尖 = 图内竿尖分数位置(0.018, 0.019) 绕锚点旋转
+      const px = -aw*0.982, py = -ah*0.981;
+      const cs = Math.cos(rodSway), sn = Math.sin(rodSway);
+      var tipX = anchorX + px*cs - py*sn;
+      var tipY = anchorY + px*sn + py*cs;
+    } else {
+      // 兜底：AI图未加载完时沿用旧剪影
+      const fs = Math.min(W,H)/430*1.25;
+      const fax = W*0.98, fay = WATER_Y + 8;
+      const rodSway = Math.sin(f.t*(1.6+S*1.4)) * (0.05+0.09*S) * (f.stamina<=0?0.35:1);
+      const depthPull = clamp((yy - WATER_Y)/(H-WATER_Y), 0, 0.4);
+      drawAngler.fightDrop = -(0.10 + f.tension/500) + rodSway*0.6 + depthPull*0.3 + (f.dash?0.06:0);
+      drawAngler(c, fax, fay, fs, f.t, 'fight', true, true);
+      const rodDrop = drawAngler.fightDrop || 0.20;
+      const cs = Math.cos(rodDrop), sn = Math.sin(rodDrop);
+      const tipLx = 27 + 105*cs + 52*sn;
+      const tipLy = -17 + 105*sn - 52*cs;
+      var tipX = fax - tipLx*fs, tipY = fay + tipLy*fs;
+    }
     c.beginPath();
     c.moveTo(tipX, tipY);
     const sag = 8 + f.tension*0.9 + Math.sin(f.t*7)*f.tension*0.12;
-    c.quadraticCurveTo((tipX+fishX)/2, Math.min(tipY,yy)+sag*0.4, fishX, yy);
+    c.quadraticCurveTo((tipX+mouthX)/2, Math.min(tipY,mouthY)+sag*0.4, mouthX, mouthY);
     c.strokeStyle = `rgba(255,255,255,${0.35+f.tension/300})`;
     c.lineWidth = 1.5; c.stroke();
-    $('#tension-fill').style.width = f.tension+'%';
-    $('#tension-fill').style.background = f.tension>90 ? '#ff4040' : f.tension>65 ? '#ff9f40' : 'linear-gradient(90deg,#3ecf72,#e7d84a)';
-    $('#stamina-fill').style.width = (f.stamina*100)+'%';
+    c.beginPath(); c.arc(mouthX, mouthY, 2.2, 0, Math.PI*2);
+    c.fillStyle='rgba(255,255,255,.82)'; c.fill();
+    $('#tension-fill').style.height = f.tension+'%';
+    $('#tension-value').textContent = Math.round(f.tension)+'%';
+    $('#stamina-fill').style.height = (f.stamina*100)+'%';
+    $('#stamina-value').textContent = Math.round(f.stamina*100)+'%';
     if(this.phase==='net'){
       const ok = this.inGreen();
       const bar = $('#fight-msg');
@@ -1403,13 +1448,13 @@ function renderLog(){
     stats.className = 'log-stats';
     stats.innerHTML = '<div class="st1">🏆 累计 '+recs.length+' 条 · '+(sumW(recs)*2).toFixed(1)+' 斤</div>'
       + '<div class="st2">📅 今日 '+today.length+' 条 · '+(sumW(today)*2).toFixed(1)+' 斤'
-      + '　🥇 最大 '+FISH_SPECIES.find(f=>f.id===big.s).name+' '+(big.w*2).toFixed(1)+' 斤</div>'
+      + '　🥇 最大 '+(FISH_SPECIES.find(f=>f.id===big.s)||{name:'未知鱼'}).name+' '+(big.w*2).toFixed(1)+' 斤</div>'
       + '<div class="st2">🎁 ' + (RSRV
         ? '本周期 '+RSRV.jin.toFixed(0)+' 斤 → 已兑 '+RSRV.days+' 天 / 上限 '+RSRV.cap+' 天（100斤=1天+100分，已入账）'
         : '本周期 '+RD.jin.toFixed(0)+' 斤 → 已兑 '+Rewards.daysFor(RD.jin)+' 天 / 上限 '+RCAP+' 天 · 积分 '+RD.points+'（100斤=1天+100分）') + '</div>';
     list.appendChild(stats);
   }
-  const rows = FISH_SPECIES.map(sp => ({ sp, n:d.counts[sp.id]||0 })).sort((a,b)=>b.n-a.n);
+  const rows = FISH_SPECIES.filter(sp=>!sp.hidden).map(sp => ({ sp, n:d.counts[sp.id]||0 })).sort((a,b)=>b.n-a.n);
   let total = 0;
   for(const {sp,n} of rows){
     total += n;

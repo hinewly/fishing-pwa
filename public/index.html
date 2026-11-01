@@ -57,13 +57,17 @@
     <h1 id="fight-title">搏鱼中…</h1>
   </header>
   <div class="fight-hud">
-    <div class="meter">
-      <label>鱼线张力</label>
-      <div class="bar"><div id="tension-fill" class="fill"></div><div class="redline"></div></div>
-    </div>
-    <div class="meter">
-      <label>鱼的体力</label>
-      <div class="bar"><div id="stamina-fill" class="fill fish"></div></div>
+    <div class="gauge-row">
+      <div class="gauge">
+        <span id="tension-value" class="gauge-value">0%</span>
+        <div class="gauge-tube"><div id="tension-fill" class="gauge-fill tension"></div><div class="redline"></div></div>
+        <label>张力</label>
+      </div>
+      <div class="gauge">
+        <span id="stamina-value" class="gauge-value">0%</span>
+        <div class="gauge-tube"><div id="stamina-fill" class="gauge-fill stamina"></div></div>
+        <label>体力</label>
+      </div>
     </div>
     <div id="fight-msg" class="fight-msg"></div>
   </div>

@@ -9,7 +9,11 @@
 /* v0.9.2 AI鱼图贴图：首条用 Vidu 生成鲤鱼做效果验证
  * 静态图 + Canvas 切片正弦形变 => 伪游动；后续鱼种复用同一机制。
  */
-const FISH_SPRITE_FILES = { liyu: 'fish-sprites/liyu.png' };
+const FISH_SPRITE_FILES = { liyu: 'fish-sprites/liyu.png', guiyu: 'fish-sprites/guiyu.png', heiyu: 'fish-sprites/heiyu.png', caoyu: 'fish-sprites/caoyu.png' };
+// v0.9.5 体型系数：搏鱼画面按鱼种区分大小（鳜鱼最小，青鱼巨物最大）
+const FISH_SPRITE_SCALE = { liyu:1, guiyu:0.82, heiyu:0.92, caoyu:1.12, nianyu:1.08, qingyu:1.35 };
+// v0.9.5 AI钓鱼人（斗笠中年，含竿）：搏鱼画面替换临时剪影
+const FIGHT_ANGLER_IMG = (typeof Image === 'undefined') ? null : (() => { const i = new Image(); i.src = 'fish-sprites/angler.png?v=v0.9.5'; return i; })();
 const FISH_SPRITES = {};
 if (typeof Image !== 'undefined') {
   Object.entries(FISH_SPRITE_FILES).forEach(([id, src]) => {
@@ -21,18 +25,18 @@ if (typeof Image !== 'undefined') {
 
 function _drawFishSprite(ctx, img, len, t = 0, opts = {}) {
   const w = len, h = len * (img.naturalHeight / img.naturalWidth);
-  // 尾部摆幅比头部大，形成真实的身体推进波；水下动作略大。
-  const amp = (opts.underwater ? 0.062 : 0.032) * len;
+  // 鱼身稳定，尾巴横向摆动；头部摆幅极小，尾部摆幅放大。
+  const amp = (opts.underwater ? 0.052 : 0.028) * len;
   const slices = 28, sw = img.naturalWidth / slices, dw = w / slices;
   ctx.save();
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
-  if (opts.underwater) ctx.filter = 'brightness(0.84) saturate(0.94)';
   for (let i = 0; i < slices; i++) {
     const nx = (i + 0.5) / slices;
-    const dy = Math.sin(t * 7.2 - nx * 3.4) * amp * Math.pow(nx, 1.4);
+    const dx = Math.sin(t * 7.4 - nx * 3.4) * amp * Math.pow(nx, 2.0);
+    const dy = Math.sin(t * 4.6 - nx * 2.2) * len * 0.012 * Math.pow(nx, 1.8);
     ctx.drawImage(img, i * sw, 0, sw, img.naturalHeight,
-      -w / 2 + i * dw, -h / 2 + dy, dw + 0.9, h);
+      -w / 2 + i * dw + dx, -h / 2 + dy, dw + 0.9, h);
   }
   ctx.restore();
 }

@@ -5,24 +5,24 @@
  * spots: shallow 浅滩 / deep 深水 / weed 水草区
  */
 const FISH_SPECIES = [
-  { id:'jiyu',   name:'鲫鱼',   rarity:1, wMin:0.1, wMax:0.8, power:2, stamina:2, behaviors:[],                spots:['shallow','weed'],   bite:[4,9] },
-  { id:'luofei', name:'罗非鱼', rarity:1, wMin:0.2, wMax:1.5, power:3, stamina:3, behaviors:[],                spots:['shallow'],          bite:[4,9] },
-  { id:'huangsang', name:'黄颡鱼', rarity:1, wMin:0.1, wMax:0.6, power:3, stamina:2, behaviors:[],           spots:['deep','weed'],      bite:[5,11] },
+  { id:'jiyu',   name:'鲫鱼',   rarity:1, hidden:1, wMin:0.1, wMax:0.8, power:2, stamina:2, behaviors:[],                spots:['shallow','weed'],   bite:[4,9] },
+  { id:'luofei', name:'罗非鱼', rarity:1, hidden:1, wMin:0.2, wMax:1.5, power:3, stamina:3, behaviors:[],                spots:['shallow'],          bite:[4,9] },
+  { id:'huangsang', name:'黄颡鱼', rarity:1, hidden:1, wMin:0.1, wMax:0.6, power:3, stamina:2, behaviors:[],           spots:['deep','weed'],      bite:[5,11] },
   { id:'caoyu',  name:'草鱼',   rarity:1, wMin:1,   wMax:8,   power:6, stamina:6, behaviors:['dash'],          spots:['shallow','weed'],   bite:[6,12] },
-  { id:'lianyu', name:'鲢鱼',   rarity:1, wMin:1,   wMax:6,   power:5, stamina:5, behaviors:['dash'],          spots:['deep'],             bite:[6,12] },
-  { id:'yongyu', name:'鳙鱼',   rarity:2, wMin:2,   wMax:10,  power:6, stamina:6, behaviors:['dash','deep'],   spots:['deep'],             bite:[7,14] },
+  { id:'lianyu', name:'鲢鱼',   rarity:1, hidden:1, wMin:1,   wMax:6,   power:5, stamina:5, behaviors:['dash'],          spots:['deep'],             bite:[6,12] },
+  { id:'yongyu', name:'鳙鱼',   rarity:2, hidden:1, wMin:2,   wMax:10,  power:6, stamina:6, behaviors:['dash','deep'],   spots:['deep'],             bite:[7,14] },
   { id:'liyu',   name:'鲤鱼',   rarity:1, wMin:0.5, wMax:6,   power:5, stamina:6, behaviors:['deep'],          spots:['shallow','deep','weed'], bite:[5,11] },
-  { id:'qiaozui',name:'翘嘴鲌', rarity:2, wMin:0.5, wMax:4,   power:5, stamina:4, behaviors:['dash','wash'],   spots:['shallow','deep'],   bite:[7,13] },
+  { id:'qiaozui',name:'翘嘴鲌', rarity:2, hidden:1, wMin:0.5, wMax:4,   power:5, stamina:4, behaviors:['dash','wash'],   spots:['shallow','deep'],   bite:[7,13] },
   { id:'nianyu', name:'鲶鱼',   rarity:1, wMin:0.5, wMax:5,   power:6, stamina:5, behaviors:['deep'],          spots:['deep','weed'],      bite:[8,15] },
   { id:'heiyu',  name:'黑鱼',   rarity:2, wMin:1,   wMax:6,   power:6, stamina:5, behaviors:['dash','teeth'],  spots:['weed'],             bite:[8,14] },
   { id:'guiyu',  name:'鳜鱼',   rarity:2, wMin:0.5, wMax:4,   power:5, stamina:4, behaviors:['dash','wash'],   spots:['deep','weed'],      bite:[8,15] },
-  { id:'qingyu', name:'青鱼',   rarity:3, wMin:5,   wMax:30,  power:9, stamina:9, behaviors:['dash','deep','wash'], spots:['deep'],       bite:[10,18] },
+  { id:'qingyu', name:'青鱼',   rarity:3, hidden:1, wMin:5,   wMax:30,  power:9, stamina:9, behaviors:['dash','deep','wash'], spots:['deep'],       bite:[10,18] },
 ];
 
 const RARITY_INFO = { 1:{label:'普通',color:'#9aa5b1',stars:'★'}, 2:{label:'稀有',color:'#4fb3ff',stars:'★★'}, 3:{label:'传说',color:'#ffb02e',stars:'★★★'} };
 
 function rollFish(spot, mode){
-  let pool = FISH_SPECIES.filter(f=>f.spots.includes(spot.id));
+  let pool = FISH_SPECIES.filter(f=>!f.hidden && f.spots.includes(spot.id));
   const diff = spot.diff || 2;
   // v0.7.0 分区鱼情：浅滩全小鱼(≤2斤) / 深水3斤+ / 水草巨物(4斤+)
   if(diff===1) pool = pool.filter(f=>f.wMax<=2);
