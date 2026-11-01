@@ -1,8 +1,8 @@
 # 钓鱼湖畔手机端布局适配 交接
 
-- last_updated: 2026-11-01 20:40
+- last_updated: 2026-11-01 21:00
 - status: done
-- version: v0.9.3
+- version: v0.9.4
 
 ## 任务目标
 
@@ -14,7 +14,9 @@
 
 ## 最近完成
 
-- 方案 B（用户确认后实施），改动全部收在小屏断点内，iPad/桌面默认样式不动：
+- v0.9.4（用户看 v0.9.3 两行版后仍嫌挤，确认改方案A——手机端内容做减法，不照搬 iPad）：①顶栏单行=⏱计时 | v版本号 | ⋯ | 账号胶囊，游戏标题小屏隐藏 ②渔获/音乐/暂停/检查更新/帮助 收进右上角 ⋯ 弹出菜单（panel-more，点击转触发原按钮，点外部关闭）③台钓/路亚切换 position:fixed 到底栏左侧与抛竿同排 ④版本号小屏常显（用户要求：能肉眼确认是否最新版）⑤SW v28
+- 版本协调：并行任务「AI鱼图贴图POC」(785cd3b) 已占用 v0.9.4/SW v28 但未部署；本次部署移除其 sw.js ASSETS 里的 fish-sprites/liyu.png（素材未上线会致 SW 安装 404），鱼图上线时随 v29 恢复预缓存
+- 方案 B（2026-11-01 20:34，已被方案A取代），改动全部收在小屏断点内，iPad/桌面默认样式不动：
   1. `index.html`：viewport 加 `viewport-fit=cover`；header 内加 `#db-account-slot`（portal.js fishing 账号胶囊第一锚点，胶囊由悬浮改为内嵌，位置视觉不变）
   2. `style.css` 追加 `@media (max-width:480px)`：顶栏两行（第一行 标题+账号胶囊、第二行 功能按钮）、按钮紧凑化、隐藏版本号、提示条下移到按钮下方允许换行、底部按钮 `bottom:calc(44px+env(safe-area-inset-bottom))` 避让页脚、放大镜同步上移、页脚字号缩小
   3. `sw.js` CACHE v26→v27（强制换缓存）、`game.js` APP_VERSION v0.9.2→v0.9.3
