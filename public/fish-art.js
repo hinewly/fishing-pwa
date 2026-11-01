@@ -18,7 +18,7 @@ const FISH_SPRITES = {};
 if (typeof Image !== 'undefined') {
   Object.entries(FISH_SPRITE_FILES).forEach(([id, src]) => {
     const img = new Image();
-    img.src = src + '?v=v0.9.4';
+    img.src = src + '?v=v0.9.5';
     FISH_SPRITES[id] = img;
   });
 }
