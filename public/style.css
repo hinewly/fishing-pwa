@@ -107,31 +107,38 @@ canvas#lake-canvas,canvas#fight-canvas{position:absolute;inset:0;width:100%;heig
 /* v0.9.2 账号胶囊插槽（portal.js 内嵌锚点；display:contents 让胶囊成为 topbar 的直接 flex 子项，外观与此前悬浮版一致） */
 #db-account-slot{display:contents}
 
-/* v0.9.2 手机端布局适配（仅小屏生效，iPad/桌面不受影响） */
+/* v0.9.2 ⋯ 菜单面板（全端定义，仅手机端展开） */
+.more-btn{display:none}
+.more-panel{position:fixed;top:54px;right:12px;background:rgba(10,26,38,.96);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:6px;z-index:45;display:flex;flex-direction:column;min-width:150px;box-shadow:0 8px 30px rgba(0,0,0,.45)}
+.more-panel.hidden{display:none}
+.more-panel button{background:none;border:none;color:var(--ink);text-align:left;padding:11px 14px;font-size:15px;border-radius:9px;cursor:pointer}
+.more-panel button:active{background:rgba(255,255,255,.12)}
+
+/* v0.9.4 手机端专属 HUD（方案A，仅 ≤480px 生效，iPad/桌面不受影响） */
 @media (max-width: 480px){
-  /* 顶栏两行：第一行 标题+账号胶囊，第二行 功能按钮 */
-  .topbar{flex-wrap:wrap;row-gap:6px;padding:10px 12px}
-  .topbar h1{order:1;font-size:16px}
-  #db-account-slot{order:2}
-  .top-actions{order:3;width:100%;gap:5px}
-  .topbar h1{width:auto}
-
-  /* 账号胶囊在小屏下不再用 margin-left:auto 顶到最右（portal 内联样式），用 slot 包装对齐 */
-  #db-account-slot{display:block;width:auto;margin-left:auto}
+  /* 顶栏单行：⏱计时 …… v版本 ⋯ [账号胶囊]（游戏标题隐藏） */
+  #screen-lake .topbar h1{display:none}
+  .topbar{padding:10px 12px}
+  .top-actions{order:1;width:auto;flex:1;gap:6px}
+  #db-account-slot{order:2;display:block;margin-left:0}
   #db-account-slot > a{margin-left:0!important}
-
-  /* 第二行按钮紧凑化 */
+  .session-timer{margin-right:auto;padding:5px 8px;font-size:13px;min-width:56px}
+  .app-ver{display:inline}
   .ghost-btn{padding:5px 8px;font-size:12px;border-radius:8px}
-  .session-timer{padding:5px 8px;font-size:13px;min-width:56px}
-  .mode-switch{margin-right:0}
-  .mode-btn{padding:6px 10px;font-size:12px}
-  .app-ver{display:none}
+  /* 低频功能收进 ⋯ 菜单 */
+  #btn-log,#btn-music,#btn-pause,#btn-refresh,#btn-help{display:none}
+  .more-btn{display:inline-flex;align-items:center;justify-content:center;font-size:16px;padding:4px 10px;letter-spacing:2px}
 
-  /* 提示条下移到第二行按钮下方，允许换行 */
-  .lake-tip{top:84px;font-size:12px;white-space:normal;max-width:92vw;text-align:center;line-height:1.5}
+  /* 台钓/路亚切换固定到底栏左侧，与抛竿同排 */
+  .mode-switch{position:fixed;left:14px;bottom:calc(58px + env(safe-area-inset-bottom));z-index:6;margin-right:0}
+  .mode-btn{padding:8px 12px;font-size:13px}
 
-  /* 底部：抛竿/搏鱼按钮上移避让页脚，并适配 iPhone 底部安全区（PWA 模式） */
+  /* 提示条紧跟顶栏，允许换行 */
+  .lake-tip{top:56px;font-size:12px;white-space:normal;max-width:92vw;text-align:center;line-height:1.5}
+
+  /* 底栏：抛竿居中；放大镜、页脚适配安全区 */
   .bottom-bar{bottom:calc(44px + env(safe-area-inset-bottom))}
+  .main-btn{padding:14px 26px;font-size:18px}
   #mag{bottom:calc(120px + env(safe-area-inset-bottom))}
   .footer{font-size:11px;padding:6px}
 }

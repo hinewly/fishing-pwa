@@ -36,6 +36,7 @@
       <button id="btn-refresh" class="ghost-btn" title="刷新获取最新版本">🔄</button>
       <span id="app-version" class="app-ver"></span>
       <button id="btn-help" class="ghost-btn">帮助</button>
+      <button id="btn-more" class="ghost-btn more-btn" title="更多">⋯</button>
     </div>
     <span id="db-account-slot"></span>
   </header>
@@ -229,6 +230,14 @@
   </div>
 </div>
 
+<div id="panel-more" class="more-panel hidden">
+    <button id="btn-log-m">📋 渔获</button>
+    <button id="btn-music-m">🎵 音乐</button>
+    <button id="btn-pause-m">⏸ 暂停 / 继续</button>
+    <button id="btn-refresh-m">🔄 检查更新</button>
+    <button id="btn-help-m">❓ 帮助</button>
+  </div>
+
 <div id="toast" class="toast hidden"></div>
 
 <footer class="footer">
@@ -250,6 +259,24 @@
   })();
 </script>
 
+<script>
+  // ⋯ 菜单接线：手机端把低频功能转触发原有按钮
+  (function () {
+    var more = document.getElementById('btn-more'), panel = document.getElementById('panel-more');
+    if (!more || !panel) return;
+    more.addEventListener('click', function (e) { e.stopPropagation(); panel.classList.toggle('hidden'); });
+    panel.addEventListener('click', function (e) {
+      var btn = e.target.closest('button'); if (!btn) return;
+      var map = { 'btn-log-m': 'btn-log', 'btn-music-m': 'btn-music', 'btn-pause-m': 'btn-pause', 'btn-refresh-m': 'btn-refresh', 'btn-help-m': 'btn-help' };
+      var orig = document.getElementById(map[btn.id]);
+      if (orig) orig.click();
+      panel.classList.add('hidden');
+    });
+    document.addEventListener('click', function (e) {
+      if (!panel.classList.contains('hidden') && !panel.contains(e.target) && e.target !== more) panel.classList.add('hidden');
+    });
+  })();
+</script>
 <script src="fish-data.js"></script>
 <script src="fish-art.js"></script>
 <script src="game.js"></script>
