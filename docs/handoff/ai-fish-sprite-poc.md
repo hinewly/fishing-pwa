@@ -1,6 +1,6 @@
 # AI鱼图贴图 POC 交接
 
-- last_updated: 2026-11-01 23:55
+- last_updated: 2026-11-02 00:15
 - status: active
 - version: v0.9.4（本地未发布）
 - repo: /Users/zoujiean/CodeX/fishing-pwa
@@ -17,6 +17,7 @@
 用 Vidu 已生成的橙鲤鱼图，验证钓鱼游戏里的「AI 鱼图 + 程序形变 + 搏鱼动画」效果，效果确认后再批量做其他鱼种和钓鱼者形象。
 
 ## 当前状态
+- 2026-11-02 00:15：v0.9.9 上线（SW v34）。两个线上 bug 修复并验证：① WebP 迁移时 angler 路径漏改 .png + SW 缓存版本未随 fish-art.js 内容同步升级（教训：改任何预缓存文件内容必须升 CACHE 版本号），v0.9.7/v32 起搏鱼画面 AI 钓鱼人线上验证通过；② 底部"登录/注册"自 v0.9.1 起就是死链接（从未绑定事件），已绑定 DaoBox.loginUrl() 跳转统一登录页，线上点击验证通过。湖面岸边钓鱼人仍为卡通剪影（未换，替换会丢抛竿动画，待用户决定）。
 - 2026-11-01 23:55：用户截图反馈搏鱼画面回退卡通——根因：SW 缓存按完整 URL 匹配，旧缓存 fish-art.js 引用 PNG?v=v0.9.5 与预缓存 key 不一致，PNG 删除后 404 回退；已把 PNG 放回服务器作兜底（commit 0321772，ASSETS 仍只预缓存 webp），用户强刷后走 v31/webp。注意：湖面岸边（drawShoreAngler）的卡通钓鱼人未替换，用户可能要求换，替换会丢抛竿动画，待确认。
 - 2026-11-01 23:45：用户反馈加载慢（根因：5 张 PNG 共 2.4MB 贴图 + ECS 小带宽），已全部转 WebP 压到 256KB（-90%），SW v31 / APP_VERSION v0.9.6，commit 5d7c0a4 已 push + rsync，线上 200 验证通过；PNG 原图已归档 _temp-screenshots/vidu-fish-gen（liyu 原图在 git 历史）。
 - 2026-11-01 22:45：v0.9.5 已发布上线（用户验收同意）：SW v30、恢复 liyu 并新增 guiyu/heiyu/caoyu/angler 预缓存、APP_VERSION v0.9.5；commit 1a4343c 已 push，rsync 部署完成，线上资源全部 200 验证通过。
