@@ -290,8 +290,8 @@
     // fix v0.9.8: 底部"登录 / 注册"自 v0.9.1 起未绑定事件（死链接），跳统一登录页
     (function(){
       var a = document.getElementById('lock-login');
-      if(a && window.PortalFx && PortalFx.loginUrl){
-        a.addEventListener('click', function(e){ e.preventDefault(); location.href = PortalFx.loginUrl(); });
+      if(a && window.DaoBox && DaoBox.loginUrl){
+        a.addEventListener('click', function(e){ e.preventDefault(); location.href = DaoBox.loginUrl(); });
       }
     })();
   </script>
