@@ -1,6 +1,6 @@
 # AI鱼图贴图 POC 交接
 
-- last_updated: 2026-11-01 22:45
+- last_updated: 2026-11-01 23:45
 - status: active
 - version: v0.9.4（本地未发布）
 - repo: /Users/zoujiean/CodeX/fishing-pwa
@@ -17,6 +17,7 @@
 用 Vidu 已生成的橙鲤鱼图，验证钓鱼游戏里的「AI 鱼图 + 程序形变 + 搏鱼动画」效果，效果确认后再批量做其他鱼种和钓鱼者形象。
 
 ## 当前状态
+- 2026-11-01 23:45：用户反馈加载慢（根因：5 张 PNG 共 2.4MB 贴图 + ECS 小带宽），已全部转 WebP 压到 256KB（-90%），SW v31 / APP_VERSION v0.9.6，commit 5d7c0a4 已 push + rsync，线上 200 验证通过；PNG 原图已归档 _temp-screenshots/vidu-fish-gen（liyu 原图在 git 历史）。
 - 2026-11-01 22:45：v0.9.5 已发布上线（用户验收同意）：SW v30、恢复 liyu 并新增 guiyu/heiyu/caoyu/angler 预缓存、APP_VERSION v0.9.5；commit 1a4343c 已 push，rsync 部署完成，线上资源全部 200 验证通过。
 - Vidu 已充值：余额 820（标准版），本次 4 张图全部第 1 次生成即合格，共耗约 24 积分，剩余约 796。
 - 用户确认方案 B：隐藏未做 AI 贴图的 7 种鱼（鲫鱼/罗非鱼/黄颡鱼/鲢鱼/鳙鱼/翘嘴鲌/青鱼），只保留 5 种 AI 贴图鱼（鲤鱼/鳜鱼/鲶鱼/黑鱼/草鱼），避免贴图鱼与 Canvas 卡通鱼同屏画风割裂。以后图齐了再逐个放出，总量最多 7~8 种。
