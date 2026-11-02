@@ -278,7 +278,7 @@ const Store = {
 
 
 /* ================= 版本 ================= */
-const APP_VERSION = 'v1.0.2';
+const APP_VERSION = 'v1.0.3';
 
 /* ================= 奖励系统（v0.8.0 用户拍板）
  * 100斤 = 1天注册时长 + 100积分，按充值周期内累计斤数四舍五入到百斤
@@ -367,6 +367,16 @@ const PortalFx = {
 };
 
 /* 每日限额（v0.9.0 场次制）：每天4场×30分钟，开场即计一场，中途关掉不退不补；暂停可跨关闭恢复 */
+
+/* v1.0.3 每日限额弹窗统一入口：游客显示登录按钮，注册用户隐藏 */
+function showDailyModal(msg){
+  const isGuest = !(window.DaoBox && DaoBox.user);
+  if(isGuest) msg = '游客今天 1 场钓完啦。登录注册解锁每天 4 场 × 30 分钟，渔获奖励会一直保留。';
+  $('#daily-left').textContent = msg;
+  $('#btn-daily-login').classList.toggle('hidden', !isGuest);
+  showPopup('#popup-daily');
+}
+
 const DailyLimit = {
   MAX: 4,
   key: 'fishing_daily_v1',
@@ -1536,8 +1546,7 @@ const Session = {
     const d = DailyLimit.today();
     if(d.used >= DailyLimit.MAX){
       this.ended = true; this.updateUI();
-      $('#daily-left').textContent = '今天 4 场钓完啦，明天再来～渔获奖励会一直保留。';
-      showPopup('#popup-daily');
+      showDailyModal('今天 4 场钓完啦，明天再来～渔获奖励会一直保留。');
       return false;
     }
     hidePopup('#popup-gate');
@@ -1594,8 +1603,7 @@ const Session = {
     }
     d.active = null; DailyLimit.save(d);
     if(DailyLimit.reached()){
-      $('#daily-left').textContent = '今天 4 场钓完啦，明天再来～渔获奖励会一直保留。';
-      showPopup('#popup-daily');
+      showDailyModal('今天 4 场钓完啦，明天再来～渔获奖励会一直保留。');
       return;
     }
     $('#gate-info').textContent = `今日还可钓 ${DailyLimit.leftSessions()} 场 · 每场 ${this.DURATION/60} 分钟`;
@@ -1728,8 +1736,7 @@ const Session = {
     hidePopup('#popup-session');
     if(DailyLimit.reached()){
       this.ended = true; this.updateUI();
-      $('#daily-left').textContent = '今天 4 场钓完啦，明天再来～渔获奖励会一直保留。';
-      showPopup('#popup-daily');
+      showDailyModal('今天 4 场钓完啦，明天再来～渔获奖励会一直保留。');
       return;
     }
     this.start();
@@ -1751,6 +1758,9 @@ const Game = {
     $('#btn-help').addEventListener('click', ()=>showPopup('#panel-help'));
     $('#btn-help-close').addEventListener('click', ()=>hidePopup('#panel-help'));
     $('#btn-daily-ok').addEventListener('click', ()=>hidePopup('#popup-daily'));
+    $('#btn-daily-login').addEventListener('click', ()=>{
+      if(window.DaoBox && DaoBox.loginUrl){ location.href = DaoBox.loginUrl(); }
+    });
     $('#btn-music-close').addEventListener('click', ()=>hidePopup('#panel-music'));
     $('#btn-mode-tai').addEventListener('click', ()=>Lake.setMode('tai'));
     $('#btn-mode-lure').addEventListener('click', ()=>Lake.setMode('lure'));
@@ -1791,8 +1801,7 @@ const Game = {
       hidePopup('#popup-quit');
       if(DailyLimit.leftSessions() > 0){ Session.start(); toast(`🎣 新一场开始，今天还剩 ${DailyLimit.leftSessions()} 场`); }
       else {
-        $('#daily-left').textContent = '今天 4 场钓完啦，明天再来～渔获奖励会一直保留。';
-        showPopup('#popup-daily');
+        showDailyModal('今天 4 场钓完啦，明天再来～渔获奖励会一直保留。');
       }
     });
     $('#btn-quit-close').addEventListener('click', ()=>{

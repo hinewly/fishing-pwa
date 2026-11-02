@@ -218,7 +218,9 @@
     <div style="font-size:48px;margin-bottom:8px">🌙</div>
     <h2 style="font-size:22px;margin-bottom:8px">今天钓够啦</h2>
     <p id="daily-left" style="color:var(--dim);margin-bottom:16px"></p>
-    <button id="btn-daily-ok" class="main-btn">知道了</button>
+    <!-- v1.0.3: 游客额度用完时显示登录入口，此前弹窗盖住底部登录链接导致"点击登录没反应" -->
+    <button id="btn-daily-login" class="main-btn hidden">🔓 登录 / 注册（解锁每天 4 场 × 30 分钟）</button>
+    <button id="btn-daily-ok" class="main-btn" style="margin-top:10px;background:rgba(255,255,255,.1);color:var(--dim)">知道了</button>
   </div>
 </div>
 

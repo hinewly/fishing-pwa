@@ -1,8 +1,8 @@
 # 钓鱼·湖畔 首版构建 交接
 
-- last_updated: 2026-10-30 17:40
+- last_updated: 2026-11-02 02:00
 - status: active
-- version: v0.9.1
+- version: v1.0.3
 
 ## 任务目标
 
@@ -81,3 +81,10 @@ v0.1.0 可玩 Demo 本地完成并通过无头浏览器全流程实测（选位�
 
 - public/index.html / style.css / game.js（主逻辑）/ fish-data.js（鱼种数值）/ fish-art.js（鱼类绘制）/ sw.js / manifest.json
 - AGENTS.md / README.md
+
+## 2026-11-02 v1.0.3 手机端"点击登录没反应"修复
+
+- 根因:游客额度用完(或注册用户 4 场用完)时弹出的全屏 `#popup-daily`(每日限额弹窗,z-index 50,`position:fixed;inset:0`)盖住了底部"登录 / 注册"链接——弹窗开着时点 footer 链接全部被遮罩层吃掉,表现为按钮失灵。登录事件绑定本身(v0.9.8 修复)一直是好的。
+- 修复:`#popup-daily` 内新增 `#btn-daily-login`(游客显示"🔓 登录 / 注册（解锁每天 4 场 × 30 分钟）",注册用户隐藏);四处弹每日限额弹窗统一走 `showDailyModal()`;游客文案单独提示 1 场/登录权益。点弹窗内登录按钮跳 `DaoBox.loginUrl()`。
+- 验证(Chrome CDP 393×660):游客额度用完→弹窗出现且登录按钮可见→点击跳转 daobox.app/login ✓;关弹窗后 footer 登录链接可点跳转 ✓。
+- SW CACHE v37→v38,APP_VERSION v1.0.3。教训再次确认:游客额度用完后每次进站都会弹这个全屏弹窗,任何需要用户操作的入口都必须进弹窗内,不能依赖弹窗外的页面元素。
