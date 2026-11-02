@@ -278,7 +278,7 @@ const Store = {
 
 
 /* ================= 版本 ================= */
-const APP_VERSION = 'v1.0.3';
+const APP_VERSION = 'v1.0.4';
 
 /* ================= 奖励系统（v0.8.0 用户拍板）
  * 100斤 = 1天注册时长 + 100积分，按充值周期内累计斤数四舍五入到百斤
@@ -369,13 +369,21 @@ const PortalFx = {
 /* 每日限额（v0.9.0 场次制）：每天4场×30分钟，开场即计一场，中途关掉不退不补；暂停可跨关闭恢复 */
 
 /* v1.0.3 每日限额弹窗统一入口：游客显示登录按钮，注册用户隐藏 */
+function isGuestNow(){ return !(window.DaoBox && DaoBox.user); }
+function goLogin(){
+  const url = (window.DaoBox && DaoBox.loginUrl) ? DaoBox.loginUrl()
+    : (window.DB_HOME || 'https://daobox.net.cn') + '/login?src=fishing&redirect=' + encodeURIComponent(location.href);
+  toast('正在打开登录页…', 2000);
+  setTimeout(()=>{ location.href = url; }, 300);
+}
 function showDailyModal(msg){
-  const isGuest = !(window.DaoBox && DaoBox.user);
+  const isGuest = isGuestNow();
   if(isGuest) msg = '游客今天 1 场钓完啦。登录注册解锁每天 4 场 × 30 分钟，渔获奖励会一直保留。';
   $('#daily-left').textContent = msg;
   $('#btn-daily-login').classList.toggle('hidden', !isGuest);
   showPopup('#popup-daily');
 }
+function showGateModal(){ $('#btn-gate-login').classList.toggle('hidden', !isGuestNow()); showPopup('#popup-gate'); }
 
 const DailyLimit = {
   MAX: 4,
@@ -1591,7 +1599,7 @@ const Session = {
       $('#gate-info').textContent = `上一场暂停中，还剩 ${Math.ceil(this.left/60)} 分钟（不另计场次，今天还能开 ${DailyLimit.leftSessions()} 场新的）`;
       $('#btn-gate-resume').classList.remove('hidden');
       $('#btn-gate-start').textContent = `弃掉上一场，开新场（还剩${DailyLimit.leftSessions()}场）`;
-      showPopup('#popup-gate');
+      showGateModal();
       return;
     }
     if(d.active && !d.active.paused && Date.now()-d.active.updated < 180000){
@@ -1609,7 +1617,7 @@ const Session = {
     $('#gate-info').textContent = `今日还可钓 ${DailyLimit.leftSessions()} 场 · 每场 ${this.DURATION/60} 分钟`;
     $('#btn-gate-resume').classList.add('hidden');
     $('#btn-gate-start').textContent = `🎣 开始本场`;
-    showPopup('#popup-gate');
+    showGateModal();
   },
   resumeSaved(){   // 门弹窗：继续上一场
     const d = DailyLimit.today();
@@ -1758,9 +1766,8 @@ const Game = {
     $('#btn-help').addEventListener('click', ()=>showPopup('#panel-help'));
     $('#btn-help-close').addEventListener('click', ()=>hidePopup('#panel-help'));
     $('#btn-daily-ok').addEventListener('click', ()=>hidePopup('#popup-daily'));
-    $('#btn-daily-login').addEventListener('click', ()=>{
-      if(window.DaoBox && DaoBox.loginUrl){ location.href = DaoBox.loginUrl(); }
-    });
+    $('#btn-daily-login').addEventListener('click', goLogin);
+    $('#btn-gate-login').addEventListener('click', goLogin);
     $('#btn-music-close').addEventListener('click', ()=>hidePopup('#panel-music'));
     $('#btn-mode-tai').addEventListener('click', ()=>Lake.setMode('tai'));
     $('#btn-mode-lure').addEventListener('click', ()=>Lake.setMode('lure'));

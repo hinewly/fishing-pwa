@@ -1,8 +1,8 @@
 # 钓鱼·湖畔 首版构建 交接
 
-- last_updated: 2026-11-02 02:00
+- last_updated: 2026-11-02 02:30
 - status: active
-- version: v1.0.3
+- version: v1.0.4
 
 ## 任务目标
 
@@ -88,3 +88,10 @@ v0.1.0 可玩 Demo 本地完成并通过无头浏览器全流程实测（选位�
 - 修复:`#popup-daily` 内新增 `#btn-daily-login`(游客显示"🔓 登录 / 注册（解锁每天 4 场 × 30 分钟）",注册用户隐藏);四处弹每日限额弹窗统一走 `showDailyModal()`;游客文案单独提示 1 场/登录权益。点弹窗内登录按钮跳 `DaoBox.loginUrl()`。
 - 验证(Chrome CDP 393×660):游客额度用完→弹窗出现且登录按钮可见→点击跳转 daobox.app/login ✓;关弹窗后 footer 登录链接可点跳转 ✓。
 - SW CACHE v37→v38,APP_VERSION v1.0.3。教训再次确认:游客额度用完后每次进站都会弹这个全屏弹窗,任何需要用户操作的入口都必须进弹窗内,不能依赖弹窗外的页面元素。
+
+## 2026-11-02 v1.0.4 登录入口补全（开场弹窗也盖链接）
+
+- 用户反馈 v1.0.3 后点登录仍无反应——第二处根因：每天进游戏的开场弹窗 `#popup-gate`（准备开钓）同样是全屏遮罩，盖住底部登录链接；v1.0.3 只处理了每日限额弹窗。
+- 修复：① `popup-gate` 加游客登录按钮（`btn-gate-login`，注册用户隐藏）；② 底部链接改事件委托+点击时实时取 `DaoBox.loginUrl()`，DaoBox 未加载时走 `DB_HOME/login?src=fishing&redirect=` 兜底；③ 弹窗内登录统一 `goLogin()`：toast"正在打开登录页…"反馈 + 300ms 后跳转，点击必有响应。
+- 验证（CDP 393×660）：游客开场弹窗登录钮可见→点击跳 daobox login ✓；daily 弹窗登录钮 ✓；无页面错误。
+- SW v39，APP v1.0.4。结论：所有全屏弹窗（gate/daily/quota）内都必须有登录入口，footer 链接只是兜底。
