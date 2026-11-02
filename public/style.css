@@ -155,3 +155,7 @@ canvas#lake-canvas,canvas#fight-canvas{position:absolute;inset:0;width:100%;heig
   .help-body{font-size:13px;line-height:1.7}
   .log-list{max-height:none}
 }
+
+/* v1.0.8 更新按钮分层：手机端缩短文案 */
+.rb-short{display:none}
+@media (max-width:480px){.rb-full{display:none}.rb-short{display:inline}}
