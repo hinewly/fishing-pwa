@@ -1,8 +1,8 @@
 # 钓鱼·湖畔 首版构建 交接
 
-- last_updated: 2026-11-02 02:30
+- last_updated: 2026-11-02 02:55
 - status: active
-- version: v1.0.4
+- version: v1.0.5
 
 ## 任务目标
 
@@ -95,3 +95,10 @@ v0.1.0 可玩 Demo 本地完成并通过无头浏览器全流程实测（选位�
 - 修复：① `popup-gate` 加游客登录按钮（`btn-gate-login`，注册用户隐藏）；② 底部链接改事件委托+点击时实时取 `DaoBox.loginUrl()`，DaoBox 未加载时走 `DB_HOME/login?src=fishing&redirect=` 兜底；③ 弹窗内登录统一 `goLogin()`：toast"正在打开登录页…"反馈 + 300ms 后跳转，点击必有响应。
 - 验证（CDP 393×660）：游客开场弹窗登录钮可见→点击跳 daobox login ✓；daily 弹窗登录钮 ✓；无页面错误。
 - SW v39，APP v1.0.4。结论：所有全屏弹窗（gate/daily/quota）内都必须有登录入口，footer 链接只是兜底。
+
+## 2026-11-02 v1.0.5 账号胶囊点击穿透修复
+
+- 用户（已登录测试02）反馈点右上角账号胶囊进不了个人管理中心。根因：`.topbar` 为不挡湖面点击设 `pointer-events:none`，`.top-actions` 单独恢复 auto，但账号胶囊挂在 `#db-account-slot`（top-actions 之外）继承 none——显示正常、点击穿透。全端生效的纯 CSS bug。
+- 修复：style.css 加 `#db-account-pill{pointer-events:auto}`（SW v40，APP v1.0.5）。
+- 验证（CDP 393×660）：关开场弹窗后胶囊 hitTest=pill，点击跳转 login/account ✓。
+- 教训：往 pointer-events:none 的容器里内嵌第三方可点元素，必须显式恢复 pointer-events。
