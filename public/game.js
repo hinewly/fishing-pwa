@@ -278,10 +278,10 @@ const Store = {
 
 
 /* ================= 版本 ================= */
-const APP_VERSION = 'v1.0.6';
+const APP_VERSION = 'v1.0.7';
 
 /* ================= 奖励系统（v0.8.0 用户拍板）
- * 100斤 = 1天注册时长 + 100积分，按充值周期内累计斤数四舍五入到百斤
+ * 100斤 = 1天注册时长 + 10积分，按充值周期内累计斤数四舍五入到百斤
  * 封顶（充值天数→周期上限）：99→30天 / 320→60天 / 750→90天 / 1095→120天；下次充值重置
  * 积分不封顶、家庭账户全局、只换知识奖品不换时间
  * portal 接入前按体验档（99天/30天）本地计算
@@ -302,7 +302,7 @@ const Rewards = {
     const d = this.data();
     const prevDays = this.daysFor(d.jin);
     d.jin = +(d.jin + weightKg*2).toFixed(2);
-    d.points = Math.round(d.jin);          // 100斤=100积分，不封顶
+    d.points = Math.round(d.jin / 10);     // 100斤=10积分，不封顶
     const nowDays = this.daysFor(d.jin);
     const cap = this.tier().cap;
     if(nowDays > prevDays && nowDays <= cap){
@@ -1496,8 +1496,8 @@ function renderLog(){
       + '<div class="st2">📅 今日 '+today.length+' 条 · '+(sumW(today)*2).toFixed(1)+' 斤'
       + '　🥇 最大 '+(FISH_SPECIES.find(f=>f.id===big.s)||{name:'未知鱼'}).name+' '+(big.w*2).toFixed(1)+' 斤</div>'
       + '<div class="st2">🎁 ' + (RSRV
-        ? '本周期 '+RSRV.jin.toFixed(0)+' 斤 → 已兑 '+RSRV.days+' 天 / 上限 '+RSRV.cap+' 天（100斤=1天+100分，已入账）'
-        : '本周期 '+RD.jin.toFixed(0)+' 斤 → 已兑 '+Rewards.daysFor(RD.jin)+' 天 / 上限 '+RCAP+' 天 · 积分 '+RD.points+'（100斤=1天+100分）') + '</div>';
+        ? '本周期 '+RSRV.jin.toFixed(0)+' 斤 → 已兑 '+RSRV.days+' 天 / 上限 '+RSRV.cap+' 天（100斤=1天+10分，已入账）'
+        : '本周期 '+RD.jin.toFixed(0)+' 斤 → 已兑 '+Rewards.daysFor(RD.jin)+' 天 / 上限 '+RCAP+' 天 · 积分 '+RD.points+'（100斤=1天+10分）') + '</div>';
     list.appendChild(stats);
   }
   const rows = FISH_SPECIES.filter(sp=>!sp.hidden).map(sp => ({ sp, n:d.counts[sp.id]||0 })).sort((a,b)=>b.n-a.n);
