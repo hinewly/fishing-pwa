@@ -278,7 +278,7 @@ const Store = {
 
 
 /* ================= 版本 ================= */
-const APP_VERSION = 'v1.0.5';
+const APP_VERSION = 'v1.0.6';
 
 /* ================= 奖励系统（v0.8.0 用户拍板）
  * 100斤 = 1天注册时长 + 100积分，按充值周期内累计斤数四舍五入到百斤
@@ -1767,6 +1767,15 @@ const Game = {
     $('#btn-help-close').addEventListener('click', ()=>hidePopup('#panel-help'));
     $('#btn-daily-ok').addEventListener('click', ()=>hidePopup('#popup-daily'));
     $('#btn-daily-login').addEventListener('click', goLogin);
+    // v1.0.6 账号胶囊：捕获阶段接管点击，弹窗开着也能进个人中心；toast 反馈便于排查"点了没反应"
+    document.addEventListener('click', function(e){
+      const pill = e.target.closest && e.target.closest('#db-account-pill');
+      if(!pill) return;
+      e.preventDefault();
+      e.stopPropagation();
+      toast('正在打开个人中心…', 2000);
+      setTimeout(()=>{ location.href = pill.href; }, 300);
+    }, true);
     $('#btn-gate-login').addEventListener('click', goLogin);
     $('#btn-music-close').addEventListener('click', ()=>hidePopup('#panel-music'));
     $('#btn-mode-tai').addEventListener('click', ()=>Lake.setMode('tai'));

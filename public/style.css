@@ -4,7 +4,8 @@
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden;font-family:"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--ink);user-select:none}
-.screen{position:fixed;inset:0;display:none}
+/* v1.0.6: fixed 会创建层叠上下文,把顶栏胶囊困住压不过全屏弹窗;absolute 视觉等效且不创建上下文 */
+.screen{position:absolute;inset:0;display:none}
 .screen.active{display:block}
 canvas#lake-canvas,canvas#fight-canvas{position:absolute;inset:0;width:100%;height:100%}
 
@@ -111,7 +112,7 @@ canvas#lake-canvas,canvas#fight-canvas{position:absolute;inset:0;width:100%;heig
 /* v0.9.2 账号胶囊插槽（portal.js 内嵌锚点；display:contents 让胶囊成为 topbar 的直接 flex 子项，外观与此前悬浮版一致） */
 #db-account-slot{display:contents}
 /* v1.0.5: 顶栏整体 pointer-events:none(不挡湖面点击),胶囊在 .top-actions 外会继承 none 导致"点了没反应",必须单独恢复 */
-#db-account-pill{pointer-events:auto}
+#db-account-pill{pointer-events:auto;position:relative;z-index:60}
 
 /* v0.9.2 ⋯ 菜单面板（全端定义，仅手机端展开） */
 .more-btn{display:none}

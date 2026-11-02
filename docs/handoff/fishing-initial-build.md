@@ -1,8 +1,8 @@
 # 钓鱼·湖畔 首版构建 交接
 
-- last_updated: 2026-11-02 02:55
+- last_updated: 2026-11-02 03:20
 - status: active
-- version: v1.0.5
+- version: v1.0.6
 
 ## 任务目标
 
@@ -102,3 +102,11 @@ v0.1.0 可玩 Demo 本地完成并通过无头浏览器全流程实测（选位�
 - 修复：style.css 加 `#db-account-pill{pointer-events:auto}`（SW v40，APP v1.0.5）。
 - 验证（CDP 393×660）：关开场弹窗后胶囊 hitTest=pill，点击跳转 login/account ✓。
 - 教训：往 pointer-events:none 的容器里内嵌第三方可点元素，必须显式恢复 pointer-events。
+
+## 2026-11-02 v1.0.6 账号胶囊被全屏弹窗盖住修复（真机复现路径）
+
+- 用户 v1.0.5 仍反馈胶囊点了没反应。复现路径：**每次进游戏的开场弹窗 `#popup-gate` 是全屏的，连顶栏账号胶囊一起盖住**；此前自动化验证都是先关弹窗再点胶囊，漏测了这条路径。
+- 深层原因：`.screen{position:fixed}` 创建层叠上下文，胶囊 z-index 被困在 `#screen-lake` 内部（等效 0 层），永远压不过 body 层的 `.popup`（z50）。给胶囊加 z60 无效——上下文不同不可比。
+- 修复：① `.screen` fixed→absolute（body height:100%+overflow:hidden，视觉等效；absolute+z auto 不创建层叠上下文）；② 胶囊 `pointer-events:auto;z-index:60`，弹窗开着也能点；③ 胶囊点击捕获阶段接管+toast"正在打开个人中心…"反馈；④ style.css 链接加 `?v=` 查询串防 SimpleHTTP 无 Cache-Control 导致的浏览器 HTTP 旧缓存。
+- 验证（CDP 393×660）：**开场弹窗开着时**胶囊 hitTest=pill→点击跳转 ✓。
+- SW v41，APP v1.0.6。教训：测弹窗遮挡必须含"页面原生状态+弹窗同时存在"的路径；position:fixed 的层叠上下文陷阱。
