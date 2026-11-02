@@ -1,6 +1,6 @@
 # 钓鱼·湖畔 首版构建 交接
 
-- last_updated: 2026-11-02 11:40
+- last_updated: 2026-11-02 12:30
 - status: active
 - version: v1.0.6
 
@@ -17,6 +17,7 @@ v0.1.0 可玩 Demo 本地完成并通过无头浏览器全流程实测（选位�
 - 用户拍板：钓鱼积分从「100斤=100分」调整为「100斤=10分」；兑换规则不变，历史积分不回溯。
 - 已改代码：`fishing-pwa/public/game.js` 本地积分公式与文案、`public/index.html` 帮助文案、`public/sw.js` 缓存到 v42；`daobox-home/worker/src/index.js` 后端积分公式与注释。
 - 尚未完成：本地计算校验、浏览器回归、git 提交、国内部署。用户已表示要先休息，回来后再继续。
+- 已完成：语法检查通过，本地 393px 冒烟通过、无页面报错；`fishing-pwa` 已提交并推送 v1.0.7；`daobox-home` 已提交并推送；国内站 `fishing.daobox.net.cn` 已看到 v1.0.7 / fishing-v42。
 
 - v0.7.7（用户反馈：没有返回工具箱按钮）：①加底部 footer（同 2048/gomoku 模式）：「← 返回 DaoBox 工具箱」链接 + contact-email 运行时拼接，DB_HOME 双域名适配(daobox.net.cn/daobox.app)，home.href = DB_HOME+'?src=fishing' ②bottom-bar 上移 36px 避免和 footer 重叠 ③SW v22
 ## 待办（新任务继续做）
