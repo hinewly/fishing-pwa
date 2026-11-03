@@ -1,12 +1,18 @@
 # 钓鱼·湖畔 首版构建 交接
 
-- last_updated: 2026-11-02 12:30
+- last_updated: 2026-11-03 18:55
 - status: active
 - version: v1.0.6
 
 ## 任务目标
 
 家族新应用「钓鱼·湖畔」：湖面垂钓 + 路亚（方案 C），大鱼拉力-体力系统、真实跑鱼失败体系、渔获数量图鉴。设计决策记录在工作区 `docs/ideas/2026-10-28-新增子程序-钓鱼游戏.md`（含全部用户拍板，必读）。
+
+## 2026-11-03 服务端奖励周期 bug 修复（随 daobox-home 8f0904b 部署）
+
+- 用户反馈 189 超级账号「权限不够」排查时发现：worker 端 `/api/fishing/state|catch|import` 三个接口的 `json()` 全部漏传 request（corsHeaders 必崩 500）+ `fishingRow` 使用未定义变量 `db`——**钓鱼服务端渔获换会员天数/积分线上从未生效过**，前端一直只有本地累计
+- 顺带：`fishingCapFor` 补 is_super（超级账号视同最高档封顶 120 天）；`/api/avatar` 等另有 4 处同类漏参一并修复
+- 本地回归：super cap=120 / 普通 cap=30 / 25kg(50斤) 上报 = 1 天 + 5 积分（v1.0.7 公式）；国内+海外已部署（海外 CF Version b245e197）
 
 ## 当前状态
 
