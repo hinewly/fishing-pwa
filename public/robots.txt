@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://fishing.daobox.net.cn/sitemap.xml
