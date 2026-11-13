@@ -6,13 +6,13 @@
  */
 const FISH_SPECIES = [
   { id:'jiyu',   name:'鲫鱼',   rarity:1, wMin:0.2, wMax:1.5, power:2, stamina:2, behaviors:[],                spots:['shallow','weed'],   bite:[4,9] },
-  { id:'luofei', name:'罗非鱼', rarity:1, hidden:1, wMin:0.2, wMax:1.5, power:3, stamina:3, behaviors:[],                spots:['shallow'],          bite:[4,9] },
-  { id:'huangsang', name:'黄颡鱼', rarity:1, hidden:1, wMin:0.1, wMax:0.6, power:3, stamina:2, behaviors:[],           spots:['deep','weed'],      bite:[5,11] },
+  { id:'luofei', name:'罗非鱼', rarity:1, wMin:0.2, wMax:1.5, power:3, stamina:3, behaviors:[],                spots:['shallow'],          bite:[4,9] },
+  { id:'huangsang', name:'黄颡鱼', rarity:1, wMin:0.1, wMax:0.6, power:3, stamina:2, behaviors:[],           spots:['deep','weed'],      bite:[5,11] },
   { id:'caoyu',  name:'草鱼',   rarity:1, wMin:1,   wMax:8,   power:6, stamina:6, behaviors:['dash'],          spots:['shallow','weed'],   bite:[6,12] },
-  { id:'lianyu', name:'鲢鱼',   rarity:1, hidden:1, wMin:1,   wMax:6,   power:5, stamina:5, behaviors:['dash'],          spots:['deep'],             bite:[6,12] },
-  { id:'yongyu', name:'鳙鱼',   rarity:2, hidden:1, wMin:2,   wMax:10,  power:6, stamina:6, behaviors:['dash','deep'],   spots:['deep'],             bite:[7,14] },
+  { id:'lianyu', name:'鲢鱼',   rarity:1, wMin:1,   wMax:6,   power:5, stamina:5, behaviors:['dash'],          spots:['deep'],             bite:[6,12] },
+  { id:'yongyu', name:'鳙鱼',   rarity:2, wMin:2,   wMax:10,  power:6, stamina:6, behaviors:['dash','deep'],   spots:['deep'],             bite:[7,14] },
   { id:'liyu',   name:'鲤鱼',   rarity:1, wMin:0.5, wMax:6,   power:5, stamina:6, behaviors:['deep'],          spots:['shallow','deep','weed'], bite:[5,11] },
-  { id:'qiaozui',name:'翘嘴鲌', rarity:2, hidden:1, wMin:0.5, wMax:4,   power:5, stamina:4, behaviors:['dash','wash'],   spots:['shallow','deep'],   bite:[7,13] },
+  { id:'qiaozui',name:'翘嘴鲌', rarity:2, wMin:0.5, wMax:4,   power:5, stamina:4, behaviors:['dash','wash'],   spots:['shallow','deep'],   bite:[7,13] },
   { id:'nianyu', name:'鲶鱼',   rarity:1, wMin:0.5, wMax:5,   power:6, stamina:5, behaviors:['deep'],          spots:['deep','weed'],      bite:[8,15] },
   { id:'heiyu',  name:'黑鱼',   rarity:2, wMin:1,   wMax:6,   power:6, stamina:5, behaviors:['dash','teeth'],  spots:['weed'],             bite:[8,14] },
   { id:'guiyu',  name:'鳜鱼',   rarity:2, wMin:0.5, wMax:4,   power:5, stamina:4, behaviors:['dash','wash'],   spots:['deep','weed'],      bite:[8,15] },

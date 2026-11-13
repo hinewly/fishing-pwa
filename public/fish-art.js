@@ -9,16 +9,16 @@
 /* v0.9.2 AI鱼图贴图：首条用 Vidu 生成鲤鱼做效果验证
  * 静态图 + Canvas 切片正弦形变 => 伪游动；后续鱼种复用同一机制。
  */
-const FISH_SPRITE_FILES = { liyu: 'fish-sprites/liyu.webp', guiyu: 'fish-sprites/guiyu.webp', heiyu: 'fish-sprites/heiyu.webp', caoyu: 'fish-sprites/caoyu.webp', jiyu: 'fish-sprites/jiyu.webp', nianyu: 'fish-sprites/nianyu.webp', qingyu: 'fish-sprites/qingyu.webp' };
+const FISH_SPRITE_FILES = { liyu: 'fish-sprites/liyu.webp', guiyu: 'fish-sprites/guiyu.webp', heiyu: 'fish-sprites/heiyu.webp', caoyu: 'fish-sprites/caoyu.webp', jiyu: 'fish-sprites/jiyu.webp', nianyu: 'fish-sprites/nianyu.webp', qingyu: 'fish-sprites/qingyu.webp', luofei: 'fish-sprites/luofei.webp', huangsang: 'fish-sprites/huangsang.webp', lianyu: 'fish-sprites/lianyu.webp', yongyu: 'fish-sprites/yongyu.webp', qiaozui: 'fish-sprites/qiaozui.webp' };
 // v0.9.5 体型系数：搏鱼画面按鱼种区分大小（鳜鱼最小，青鱼巨物最大）
-const FISH_SPRITE_SCALE = { liyu:1, guiyu:0.82, heiyu:0.92, caoyu:1.12, jiyu:0.72, nianyu:1.08, qingyu:1.35 };
+const FISH_SPRITE_SCALE = { liyu:1, guiyu:0.82, heiyu:0.92, caoyu:1.12, jiyu:0.72, nianyu:1.08, qingyu:1.35, luofei:0.9, huangsang:0.85, lianyu:1.05, yongyu:1.18, qiaozui:1.05 };
 // v0.9.5 AI钓鱼人（斗笠中年，含竿）：搏鱼画面替换临时剪影
-const FIGHT_ANGLER_IMG = (typeof Image === 'undefined') ? null : (() => { const i = new Image(); i.src = 'fish-sprites/angler.webp?v=v0.9.7'; return i; })();
+const FIGHT_ANGLER_IMG = (typeof Image === 'undefined') ? null : (() => { const i = new Image(); i.src = 'fish-sprites/angler.webp?v=v0.9.8'; return i; })();
 const FISH_SPRITES = {};
 if (typeof Image !== 'undefined') {
   Object.entries(FISH_SPRITE_FILES).forEach(([id, src]) => {
     const img = new Image();
-    img.src = src + '?v=v0.9.7';
+    img.src = src + '?v=v0.9.8';
     FISH_SPRITES[id] = img;
   });
 }
