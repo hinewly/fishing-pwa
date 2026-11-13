@@ -28,6 +28,25 @@ const AudioSys = (() => {
       s.connect(f).connect(g).connect(a.destination); s.start();
     }catch(e){}
   }
+  // 大雁叫声：Wikimedia Public Domain 素材（Canada Geese honking）
+  let honkBufs = null, honkLoading = null;
+  async function loadHonk(){
+    if(honkBufs) return honkBufs;
+    if(!honkLoading){
+      honkLoading = (async()=>{
+        const a = ctx();
+        const out = [];
+        for(const f of ['goose-honk-1.mp3','goose-honk-2.mp3']){
+          const r = await fetch('/audio/'+f);
+          if(!r.ok) throw new Error('honk fetch failed');
+          out.push(await a.decodeAudioData(await r.arrayBuffer()));
+        }
+        return out;
+      })();
+    }
+    honkBufs = await honkLoading;
+    return honkBufs;
+  }
   return {
     unlock: ctx,
     tick:   () => tone(1400, .05, 'square', .05),
@@ -40,6 +59,16 @@ const AudioSys = (() => {
     snap:   () => { tone(180,.08,'square',.2); noise(.15,.3,1200); },
     win:    () => { [523,659,784,1046].forEach((f,i)=>setTimeout(()=>tone(f,.22,'triangle',.14),i*110)); },
     lose:   () => { tone(300,.4,'sawtooth',.12,-180); },
+    async honk(){
+      try{
+        const bufs = await loadHonk();
+        const a = ctx(), s = a.createBufferSource(), g = a.createGain();
+        s.buffer = bufs[Math.floor(Math.random()*bufs.length)];
+        s.playbackRate.value = 0.9 + Math.random()*0.25;
+        g.gain.value = 0.14 + Math.random()*0.05;
+        s.connect(g).connect(a.destination); s.start();
+      }catch(e){ tone(320,.35,'sawtooth',.10,-70); }
+    },
   };
 })();
 
@@ -278,7 +307,7 @@ const Store = {
 
 
 /* ================= 版本 ================= */
-const APP_VERSION = 'v1.0.9';
+const APP_VERSION = 'v1.0.10';
 
 /* ================= 奖励系统（v0.8.0 用户拍板）
  * 100斤 = 1天注册时长 + 10积分，按充值周期内累计斤数四舍五入到百斤
@@ -405,6 +434,17 @@ const DailyLimit = {
  * 以脚底为原点 y=0，身高约 78 单位；s 为缩放
  * mode: idle 等口 / bite 刺鱼瞬间竿被下拉 / fight 搏鱼（剪影由调用方换色）
  */
+function drawGoose(c,x,y,s,flap){
+  c.save(); c.translate(x,y); c.scale(s,s); c.fillStyle='#4a4038';
+  c.beginPath(); c.ellipse(0,0,12,4,0,0,Math.PI*2); c.fill();
+  c.beginPath(); c.moveTo(10,-2); c.quadraticCurveTo(16,-8,20,-6); c.quadraticCurveTo(22,-4,18,-2); c.closePath(); c.fill();
+  c.beginPath(); c.moveTo(20,-6); c.lineTo(24,-5); c.lineTo(20,-3); c.closePath(); c.fill();
+  c.beginPath(); c.moveTo(-10,-1); c.lineTo(-18,2); c.lineTo(-10,3); c.closePath(); c.fill();
+  const wingY=-flap*20;
+  c.beginPath(); c.moveTo(0,-2); c.quadraticCurveTo(8,wingY-6,18,wingY-2); c.quadraticCurveTo(6,wingY+4,0,2); c.closePath(); c.fill();
+  c.beginPath(); c.moveTo(0,2); c.quadraticCurveTo(8,wingY+6,14,wingY+2); c.quadraticCurveTo(4,wingY-2,0,-2); c.closePath(); c.fill();
+  c.restore();
+}
 function drawAngler(c, x, y, s, t, mode, silhouette, mirror){
   c.save(); c.translate(x, y); c.scale(mirror?-s:s, s);
   const C = silhouette
@@ -578,6 +618,57 @@ function drawShoreAngler(c, W, H, t, lake){
   const dy = -(105*Math.sin(rodDrop)) + (-52)*Math.cos(rodDrop) + 2*Math.cos(rodDrop);
   return { tipX: hx + dx*s, tipY: hy + dy*s };
 }
+
+/* ================= 天空大雁群（随机飞行 + 叫声） ================= */
+const GooseFlock = (() => {
+  let active=false, x=0, y=0, t=0, nextSpawn=rand(4,9), crossDur=16, honkT=rand(.4,1.4), honked=0;
+  function reset(){
+    active=true; t=0;
+    x = innerWidth + 60;
+    y = innerHeight * rand(.12,.24);
+    crossDur = rand(14.5,17.5);
+    honkT = rand(.4,1.4);
+    honked = 0;
+  }
+  function scale(W,H){ return 0.8*clamp(Math.min(W,H)/520,0.55,1.0); }
+  function update(dt, musicOn){
+    if(!active){
+      nextSpawn -= dt;
+      if(nextSpawn <= 0) reset();
+      return;
+    }
+    t += dt;
+    const W = innerWidth;
+    const spd = (W + 220*scale(W,innerHeight)) / crossDur;
+    x -= spd*dt;
+    if(musicOn){
+      honkT -= dt;
+      if(honkT <= 0){
+        AudioSys.honk();
+        honked++;
+        honkT = honked===1 ? rand(2.8,4.5) : rand(4,8);
+      }
+    }
+    if(x < -260*scale(W,innerHeight)){
+      active=false;
+      nextSpawn=rand(16,26);
+    }
+  }
+  function draw(c,W,H,t){
+    if(!active) return;
+    const s = scale(W,H), spacing=90*(s/0.8), ranks=[0,1,-1,2,-2,3,-3];
+    const bob=Math.sin(t*0.8)*6;
+    ranks.forEach((rank,idx)=>{
+      const d=Math.abs(rank), j=8*Math.sin(idx*2.1+1.7);
+      const gx=x+d*spacing*.9+(rank===0?0:14)+j;
+      const gy=y+bob+(rank>0?-d*spacing*.45:rank<0?d*spacing*.52:0)+Math.sin(t*1.1+idx*1.1)*4;
+      const size=s*(1-d*.05);
+      const flap=Math.sin(t*3.2+idx*.55)*.8+.1;
+      drawGoose(c,gx,gy,size,flap);
+    });
+  }
+  return { update, draw };
+})();
 
 /* ================= 湖面场景 ================= */
 const SPOTS = [
@@ -824,15 +915,11 @@ const Lake = {
       c.ellipse(cx-20, cy-3, 18, 8, 0, 0, Math.PI*2);
       c.fill();
     }
-    c.strokeStyle = 'rgba(60,60,60,0.6)'; c.lineWidth = 1.6; c.lineCap='round';
-    for(let i=0;i<3;i++){
-      const bx2 = ((i*0.4+0.15)*W - t*22*(i%2+1)*0.4) % (W+100);
-      const by2 = H*(0.10+i*0.04) + Math.sin(t*2+i)*4;
-      const flap = Math.sin(t*7+i*2)*3;
-      c.beginPath();
-      c.moveTo(bx2-6, by2-flap); c.quadraticCurveTo(bx2, by2+2, bx2+6, by2-flap);
-      c.stroke();
-    }
+    // 随机大雁群 + 叫声
+    const dt = this.lastT===undefined ? 0 : Math.max(0,t-this.lastT);
+    this.lastT = t;
+    GooseFlock.update(dt, AmbientMusic.playing);
+    GooseFlock.draw(c,W,H,t);
     c.beginPath(); c.moveTo(0,H*0.35);
     c.quadraticCurveTo(W*0.25,H*0.22,W*0.5,H*0.35);
     c.quadraticCurveTo(W*0.75,H*0.26,W,H*0.35);

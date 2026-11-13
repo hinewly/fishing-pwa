@@ -2,8 +2,8 @@
  * HTML(导航请求)：网络优先（no-cache 强制校验新鲜度），离线回退缓存
  * 其余资源：缓存优先（版本随 CACHE 递增整体换新）
  */
-const CACHE = 'fishing-v45';
-const ASSETS = ['./','index.html','style.css','fish-data.js','fish-art.js','game.js','manifest.json','icons/icon-192.png','icons/icon-512.png','icons/apple-touch-icon.png','fish-sprites/liyu.webp','fish-sprites/guiyu.webp','fish-sprites/heiyu.webp','fish-sprites/caoyu.webp','fish-sprites/angler.webp','fish-sprites/jiyu.webp','fish-sprites/nianyu.webp','fish-sprites/qingyu.webp','fish-sprites/luofei.webp','fish-sprites/huangsang.webp','fish-sprites/lianyu.webp','fish-sprites/yongyu.webp','fish-sprites/qiaozui.webp'];
+const CACHE = 'fishing-v46';
+const ASSETS = ['./','index.html','style.css','fish-data.js','fish-art.js','game.js','manifest.json','icons/icon-192.png','icons/icon-512.png','icons/apple-touch-icon.png','fish-sprites/liyu.webp','fish-sprites/guiyu.webp','fish-sprites/heiyu.webp','fish-sprites/caoyu.webp','fish-sprites/angler.webp','fish-sprites/jiyu.webp','fish-sprites/nianyu.webp','fish-sprites/qingyu.webp','fish-sprites/luofei.webp','fish-sprites/huangsang.webp','fish-sprites/lianyu.webp','fish-sprites/yongyu.webp','fish-sprites/qiaozui.webp','audio/goose-honk-1.mp3','audio/goose-honk-2.mp3'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())); });
 self.addEventListener('fetch', e => {

@@ -1,0 +1,39 @@
+# 大雁群飞行 + 叫声 交接
+
+- last_updated: 2026-11-13 21:12
+- status: active
+- version: v1.0.10
+
+## 任务目标
+
+钓鱼湖畔天空加随机出场的大雁群（Canvas 画，免费）+ 大雁叫声（免费 Public Domain 音频）。
+
+## 当前状态
+
+功能代码已实现，本地渲染验证通过。还差你确认游戏内效果后我再部署线上。
+
+## 最近完成
+
+- 移除原来的 3 只简陋小鸟，改成 7 只大雁群（不对称 V 形、约 3 个体长间距）
+- 横穿屏幕约 14.5~17.5 秒
+- 每群结束后随机 16~26 秒再出下一群
+- 新增两段 Public Domain 雁叫音频，随机播放、音量随机微调
+- 雁叫跟随背景音乐开关；音乐关闭时只飞不叫
+- SW 缓存升到 v46，版本号 v1.0.10
+
+## 待办
+
+- 你确认效果后我再 commit + push + rsync 部署国内站。
+
+## 注意事项
+
+- 音频来源：Wikimedia Commons《Geese Honking (distant).ogg》，Public Domain。
+- 树/芦苇升级本轮明确不做。
+- 音频文件在 `public/audio/goose-honk-1.mp3`、`goose-honk-2.mp3`。
+
+## 相关文件
+
+- `public/game.js`
+- `public/sw.js`
+- `public/audio/goose-honk-1.mp3`
+- `public/audio/goose-honk-2.mp3`
