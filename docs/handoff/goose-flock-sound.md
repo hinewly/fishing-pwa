@@ -1,8 +1,8 @@
 # 大雁群飞行 + 叫声 交接
 
-- last_updated: 2026-11-13 21:12
+- last_updated: 2026-11-14 09:28
 - status: active
-- version: v1.0.10
+- version: v1.0.11
 
 ## 任务目标
 
@@ -13,6 +13,8 @@
 功能代码已实现，本地渲染验证通过。还差你确认游戏内效果后我再部署线上。
 
 ## 最近完成
+
+- v1.0.11：换用 Greylag Goose CC BY-SA 共鸣雁叫、高度限制修复、雁叫节奏改为每群 2~3 声。
 
 - 移除原来的 3 只简陋小鸟，改成 7 只大雁群（不对称 V 形、约 3 个体长间距）
 - 横穿屏幕约 14.5~17.5 秒
@@ -27,7 +29,9 @@
 
 ## 注意事项
 
-- 音频来源：Wikimedia Commons《Geese Honking (distant).ogg》，Public Domain。
+- 音频来源：Wikimedia Commons《Anser anser - Greylag Goose XC436358.mp3》，CC BY-SA 4.0，作者 Joost van Bruggen（已剪 2 段共鸣感雁叫）。
+- 雁群高度限制：下臂下降被 maxDown 截住，始终保持在 H*0.19 之上，不进山/水面。
+- 每群雁叫 2~3 声（间隔 2.5~4.5s），群结束后随机 16~26s 出下一群。
 - 树/芦苇升级本轮明确不做。
 - 音频文件在 `public/audio/goose-honk-1.mp3`、`goose-honk-2.mp3`。
 

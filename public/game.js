@@ -28,7 +28,7 @@ const AudioSys = (() => {
       s.connect(f).connect(g).connect(a.destination); s.start();
     }catch(e){}
   }
-  // 大雁叫声：Wikimedia Public Domain 素材（Canada Geese honking）
+  // 大雁叫声：Wikimedia《Anser anser - Greylag Goose XC436358.mp3》CC BY-SA 4.0，作者 Joost van Bruggen
   let honkBufs = null, honkLoading = null;
   async function loadHonk(){
     if(honkBufs) return honkBufs;
@@ -307,7 +307,7 @@ const Store = {
 
 
 /* ================= 版本 ================= */
-const APP_VERSION = 'v1.0.10';
+const APP_VERSION = 'v1.0.11';
 
 /* ================= 奖励系统（v0.8.0 用户拍板）
  * 100斤 = 1天注册时长 + 10积分，按充值周期内累计斤数四舍五入到百斤
@@ -621,14 +621,18 @@ function drawShoreAngler(c, W, H, t, lake){
 
 /* ================= 天空大雁群（随机飞行 + 叫声） ================= */
 const GooseFlock = (() => {
-  let active=false, x=0, y=0, t=0, nextSpawn=rand(4,9), crossDur=16, honkT=rand(.4,1.4), honked=0;
+  let active=false, x=0, y=0, t=0, maxDown=0, nextSpawn=rand(4,9), crossDur=16;
+  let honkT=rand(.5,1.5), honked=0, maxHonks=3;
   function reset(){
     active=true; t=0;
     x = innerWidth + 60;
-    y = innerHeight * rand(.12,.24);
+    y = innerHeight * rand(.07,.13);
+    // 限制雁群最低高度：始终保持在山/水面上方（H*0.19 红线，再留 8px 余量）
+    maxDown = Math.max(20, innerHeight*0.19 - y - 8);
     crossDur = rand(14.5,17.5);
-    honkT = rand(.4,1.4);
     honked = 0;
+    maxHonks = 2 + Math.floor(Math.random()*2); // 每群叫 2~3 声
+    honkT = rand(.5,1.5);
   }
   function scale(W,H){ return 0.8*clamp(Math.min(W,H)/520,0.55,1.0); }
   function update(dt, musicOn){
@@ -641,12 +645,13 @@ const GooseFlock = (() => {
     const W = innerWidth;
     const spd = (W + 220*scale(W,innerHeight)) / crossDur;
     x -= spd*dt;
-    if(musicOn){
+    // 本群雁叫：2~3 声，间隔 2.5~4.5s，随背景音乐开关
+    if(musicOn && honked < maxHonks){
       honkT -= dt;
       if(honkT <= 0){
         AudioSys.honk();
         honked++;
-        honkT = honked===1 ? rand(2.8,4.5) : rand(4,8);
+        honkT = rand(2.5,4.5);
       }
     }
     if(x < -260*scale(W,innerHeight)){
@@ -661,7 +666,13 @@ const GooseFlock = (() => {
     ranks.forEach((rank,idx)=>{
       const d=Math.abs(rank), j=8*Math.sin(idx*2.1+1.7);
       const gx=x+d*spacing*.9+(rank===0?0:14)+j;
-      const gy=y+bob+(rank>0?-d*spacing*.45:rank<0?d*spacing*.52:0)+Math.sin(t*1.1+idx*1.1)*4;
+      // 上臂向上升不受限；下臂向下降被 maxDown 截住，保证不飞进山/水
+      const dy = rank>0
+        ? -d*spacing*.38
+        : rank<0
+          ? Math.min(d*spacing*.42, maxDown)
+          : 0;
+      const gy=y+dy+bob+Math.sin(t*1.1+idx*1.1)*4;
       const size=s*(1-d*.05);
       const flap=Math.sin(t*3.2+idx*.55)*.8+.1;
       drawGoose(c,gx,gy,size,flap);
