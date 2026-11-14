@@ -307,7 +307,7 @@ const Store = {
 
 
 /* ================= 版本 ================= */
-const APP_VERSION = 'v1.0.12';
+const APP_VERSION = 'v1.0.13';
 
 /* ================= 奖励系统（v0.8.0 用户拍板）
  * 100斤 = 1天注册时长 + 10积分，按充值周期内累计斤数四舍五入到百斤
@@ -636,7 +636,7 @@ const GooseFlock = (() => {
     honkT = rand(.5,1.5);
   }
   function scale(W,H){ return 0.8*clamp(Math.min(W,H)/520,0.55,1.0); }
-  function update(dt, musicOn){
+  function update(dt){
     if(!active){
       nextSpawn -= dt;
       if(nextSpawn <= 0) reset();
@@ -646,8 +646,8 @@ const GooseFlock = (() => {
     const W = innerWidth;
     const spd = (W + 350*scale(W,innerHeight)) / crossDur;
     x += spd*dt;
-    // 本群雁叫：2~3 声，间隔 2.5~4.5s，随背景音乐开关
-    if(musicOn && honked < maxHonks){
+    // 本群雁叫：2~3 声，间隔 2.5~4.5s（独立于背景音乐，跟其他音效一致）
+    if(honked < maxHonks){
       honkT -= dt;
       if(honkT <= 0){
         AudioSys.honk();
@@ -931,7 +931,7 @@ const Lake = {
     // 随机大雁群 + 叫声
     const dt = this.lastT===undefined ? 0 : Math.max(0,t-this.lastT);
     this.lastT = t;
-    GooseFlock.update(dt, AmbientMusic.playing);
+    GooseFlock.update(dt);
     GooseFlock.draw(c,W,H,t);
     c.beginPath(); c.moveTo(0,H*0.35);
     c.quadraticCurveTo(W*0.25,H*0.22,W*0.5,H*0.35);
