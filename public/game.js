@@ -307,7 +307,7 @@ const Store = {
 
 
 /* ================= 版本 ================= */
-const APP_VERSION = 'v1.0.11';
+const APP_VERSION = 'v1.0.12';
 
 /* ================= 奖励系统（v0.8.0 用户拍板）
  * 100斤 = 1天注册时长 + 10积分，按充值周期内累计斤数四舍五入到百斤
@@ -625,7 +625,8 @@ const GooseFlock = (() => {
   let honkT=rand(.5,1.5), honked=0, maxHonks=3;
   function reset(){
     active=true; t=0;
-    x = innerWidth + 60;
+    // 从左往右飞：领队从左边界外入场，最后飞出右边界
+    x = -30*scale(innerWidth,innerHeight);
     y = innerHeight * rand(.07,.13);
     // 限制雁群最低高度：始终保持在山/水面上方（H*0.19 红线，再留 8px 余量）
     maxDown = Math.max(20, innerHeight*0.19 - y - 8);
@@ -643,8 +644,8 @@ const GooseFlock = (() => {
     }
     t += dt;
     const W = innerWidth;
-    const spd = (W + 220*scale(W,innerHeight)) / crossDur;
-    x -= spd*dt;
+    const spd = (W + 350*scale(W,innerHeight)) / crossDur;
+    x += spd*dt;
     // 本群雁叫：2~3 声，间隔 2.5~4.5s，随背景音乐开关
     if(musicOn && honked < maxHonks){
       honkT -= dt;
@@ -654,7 +655,7 @@ const GooseFlock = (() => {
         honkT = rand(2.5,4.5);
       }
     }
-    if(x < -260*scale(W,innerHeight)){
+    if(x > W + 320*scale(W,innerHeight)){
       active=false;
       nextSpawn=rand(16,26);
     }
@@ -665,7 +666,8 @@ const GooseFlock = (() => {
     const bob=Math.sin(t*0.8)*6;
     ranks.forEach((rank,idx)=>{
       const d=Math.abs(rank), j=8*Math.sin(idx*2.1+1.7);
-      const gx=x+d*spacing*.9+(rank===0?0:14)+j;
+      // 领队在前（右侧），后续雁在左后方拖出 V 臂；飞行方向朝右
+      const gx=x-d*spacing*.9-(rank===0?0:14)+j;
       // 上臂向上升不受限；下臂向下降被 maxDown 截住，保证不飞进山/水
       const dy = rank>0
         ? -d*spacing*.38
