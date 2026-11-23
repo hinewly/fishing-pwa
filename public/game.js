@@ -307,18 +307,18 @@ const Store = {
 
 
 /* ================= 版本 ================= */
-const APP_VERSION = 'v1.0.15';
+const APP_VERSION = 'v1.0.16';
 
 /* ================= 奖励系统（v0.8.0 用户拍板）
  * 100斤 = 1天注册时长 + 10积分，按充值周期内累计斤数四舍五入到百斤
  * 封顶（充值天数→周期上限）：99→30天 / 320→60天 / 750→90天 / 1095→120天；下次充值重置
  * 积分不封顶、家庭账户全局、只换知识奖品不换时间
- * portal 接入前按体验档（99天/30天）本地计算
+ * 游客本地展示按 99 天档计算；登录用户以后端返回的充值周期为准
  */
 const Rewards = {
   key:'fishing_reward_v1',
   TIERS: [ {days:99,cap:30}, {days:320,cap:60}, {days:750,cap:90}, {days:1095,cap:120} ],
-  tier(){ return this.TIERS[0]; },   // TODO portal 接入后按用户充值档位取
+  tier(){ return this.TIERS[0]; },   // 游客本地展示按 99 天档；登录用户改用 PortalFx.server
   load(){ try{ return JSON.parse(localStorage.getItem(this.key)) || {}; }catch(e){ return {}; } },
   save(d){ localStorage.setItem(this.key, JSON.stringify(d)); },
   data(){
@@ -1757,7 +1757,7 @@ const Session = {
     d.active = { left: this.left, paused: this.paused, updated: Date.now() };
     DailyLimit.save(d);
   },
-  /* 身份感知：游客 1场×10分钟，注册免费用户 1场×20分钟，会员不限时 */
+  /* 身份感知：游客 1 场×10 分钟，注册免费用户 1 场×20 分钟，会员不限时 */
   configurePortal(){
     const isUser = !!(window.DaoBox && window.DaoBox.user);
     const timeInfo = window.DaoBox && window.DaoBox.timeInfo;

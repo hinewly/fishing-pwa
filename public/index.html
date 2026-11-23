@@ -149,10 +149,11 @@
       <p>想收工：⏸ → 「今天不玩了」→ 确认退出，渔获奖励零损失</p>
       <p>🎮 手柄：A 按住收线 / X 稳住·抄网</p>
       <h3 style="color:var(--gold);margin:8px 0 2px">📝 更新记录</h3>
-      <p>· <strong>v0.9.1</strong> 接入 DaoBox 账号：登录后渔获实时入账（100斤=1天会员+100积分）、本机渔获一键并入、游客1场×15分钟/注册4场×30分钟</p>
+      <p style="color:var(--dim)">以下为历史版本记录；当前规则以上方“时间规则”和“奖励计划”为准。</p>
+      <p>· <strong>v0.9.1</strong> 接入 DaoBox 账号：登录后渔获实时入账、本机渔获一键并入（当时为游客1场×15分钟/注册4场×30分钟）</p>
       <p>· <strong>v1.0.14</strong> 离线奖励队列：断网照常玩，渔获和积分联网后自动补入；服务端增加每日上限与重复上报保护</p>
       <p>· <strong>v0.9.0</strong> 每天4场次制（开场即计）、「今天不玩了」体面退出、暂停跨关闭恢复（继续上一场）、场次用完提示</p>
-      <p>· <strong>v0.8.0</strong> 奖励计划上线（100斤=1天+100分）、每日2小时限时、搏鱼时长分档10/15/30秒、小鱼即钓即入护、深水区85%上鱼率、路亚全程站立、顶栏版本号</p>
+      <p>· <strong>v0.8.0</strong> 奖励计划上线、搏鱼时长分档10/15/30秒、小鱼即钓即入护、深水区85%上鱼率、路亚全程站立、顶栏版本号（当时为每日2小时限时）</p>
       <p>· v0.7.7 抄网首次容错+转速放缓；v0.7.6 路亚真实收线模式；v0.7.5 本场计时+暂停+背景音乐；v0.7.3 完整抛竿动画；v0.7.2 鱼类半写实配色重做</p>
     </div>
     <button id="btn-help-close" class="main-btn">知道了</button>
@@ -173,7 +174,7 @@
   <div class="popup-card">
     <div style="font-size:48px;margin-bottom:8px">⏸</div>
     <h2 style="font-size:22px;margin-bottom:8px">已暂停</h2>
-    <p style="color:var(--dim);margin-bottom:16px" id="pause-timer-info">剩余时间 30:00</p>
+    <p style="color:var(--dim);margin-bottom:16px" id="pause-timer-info">剩余时间 --:--</p>
     <button id="btn-resume" class="main-btn">▶ 继续钓鱼</button>
     <button id="btn-end-session" class="main-btn ghost" style="margin-top:10px;background:rgba(255,255,255,.1);color:var(--dim)">🏁 结束本场</button>
     <button id="btn-quit-today" class="main-btn ghost" style="margin-top:10px;background:rgba(255,255,255,.1);color:var(--dim)">🚪 今天不玩了</button>
