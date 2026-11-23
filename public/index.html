@@ -31,7 +31,7 @@
         <button id="btn-mode-tai" class="mode-btn active">台钓</button>
         <button id="btn-mode-lure" class="mode-btn">路亚</button>
       </div>
-      <span id="session-timer" class="session-timer">30:00</span>
+      <span id="session-timer" class="session-timer">--:--</span>
       <button id="btn-log" class="ghost-btn">📋 渔获</button>
       <button id="btn-music" class="ghost-btn" title="背景音乐">🎵</button>
       <button id="btn-pause" class="ghost-btn" title="暂停">⏸</button>
@@ -143,8 +143,8 @@
       <p>顶格后渔获照常累计，<strong>下次充值重新开始</strong>。</p>
       <p><strong>离线照常钓</strong>，登录用户的渔获会在联网后自动补入；每天最多按 100kg 渔获计入奖励，积分每日最多 20，超出部分自动排队到次日。</p>
       <h3 style="color:var(--gold);margin:8px 0 2px">⏱ 时间规则</h3>
-      <p><strong>游客</strong>：每天 1 场 × 15 分钟；<strong>注册登录</strong>：每天 4 场 × 30 分钟</p>
-      <p><strong>开场就算一场</strong>，中途退出不退不补；想中途歇口气用「⏸ 暂停」，关掉页面回来可继续本场</p>
+      <p><strong>游客</strong>：每天 10 分钟；<strong>注册免费用户</strong>：每天 20 分钟；<strong>会员</strong>：不限时</p>
+      <p>开场即计时，中途退出不退不补；想歇口气用「⏸ 暂停」，关掉页面回来可继续本场</p>
       <p>登录后渔获自动入账号：100斤=1天会员时长+10积分；没网时先存本机，恢复网络后自动补传</p>
       <p>想收工：⏸ → 「今天不玩了」→ 确认退出，渔获奖励零损失</p>
       <p>🎮 手柄：A 按住收线 / X 稳住·抄网</p>
@@ -189,7 +189,7 @@
     <button id="btn-gate-start" class="main-btn">🎣 开始本场</button>
     <button id="btn-gate-resume" class="main-btn ghost hidden" style="margin-top:10px;background:rgba(255,255,255,.1);color:var(--dim)">⏵ 继续上一场</button>
     <!-- v1.0.4: 开场弹窗也是全屏，同样会盖住底部登录链接；游客在此直接给登录入口 -->
-    <button id="btn-gate-login" class="main-btn hidden" style="margin-top:10px;background:rgba(255,255,255,.1);color:var(--dim)">🔓 登录 / 注册（解锁每天 4 场 × 30 分钟）</button>
+    <button id="btn-gate-login" class="main-btn hidden" style="margin-top:10px;background:rgba(255,255,255,.1);color:var(--dim)">🔓 登录 / 注册（解锁每天 20 分钟）</button>
   </div>
 </div>
 
@@ -224,7 +224,7 @@
     <h2 style="font-size:22px;margin-bottom:8px">今天钓够啦</h2>
     <p id="daily-left" style="color:var(--dim);margin-bottom:16px"></p>
     <!-- v1.0.3: 游客额度用完时显示登录入口，此前弹窗盖住底部登录链接导致"点击登录没反应" -->
-    <button id="btn-daily-login" class="main-btn hidden">🔓 登录 / 注册（解锁每天 4 场 × 30 分钟）</button>
+    <button id="btn-daily-login" class="main-btn hidden">🔓 登录 / 注册（解锁每天 20 分钟）</button>
     <button id="btn-daily-ok" class="main-btn" style="margin-top:10px;background:rgba(255,255,255,.1);color:var(--dim)">知道了</button>
   </div>
 </div>
@@ -236,7 +236,7 @@
     <h2 style="font-size:22px;margin-bottom:4px">本场结束</h2>
     <p id="session-summary" style="color:var(--dim);margin-bottom:12px;line-height:1.6"></p>
     <div id="session-detail" style="text-align:left;font-size:14px;color:var(--dim);margin-bottom:16px;max-height:200px;overflow-y:auto"></div>
-    <button id="btn-new-session" class="main-btn">🎣 再钓一场（30分钟）</button>
+    <button id="btn-new-session" class="main-btn">🎣 再钓一场</button>
     <button id="btn-quit-from-session" class="main-btn ghost" style="margin-top:10px;background:rgba(255,255,255,.1);color:var(--dim)">🚪 今天到这里</button>
   </div>
 </div>

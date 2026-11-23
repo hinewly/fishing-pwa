@@ -307,7 +307,7 @@ const Store = {
 
 
 /* ================= 版本 ================= */
-const APP_VERSION = 'v1.0.14';
+const APP_VERSION = 'v1.0.15';
 
 /* ================= 奖励系统（v0.8.0 用户拍板）
  * 100斤 = 1天注册时长 + 10积分，按充值周期内累计斤数四舍五入到百斤
@@ -468,7 +468,7 @@ const PortalFx = {
 };
 window.addEventListener('online', () => { PortalFx.flushQueue(); });
 
-/* 每日限额（v0.9.0 场次制）：每天4场×30分钟，开场即计一场，中途关掉不退不补；暂停可跨关闭恢复 */
+/* 每日限额（2026-11-23）：游客 1 场 10 分钟、注册免费用户 1 场 20 分钟、会员不限时 */
 
 /* v1.0.3 每日限额弹窗统一入口：游客显示登录按钮，注册用户隐藏 */
 function isGuestNow(){ return !(window.DaoBox && DaoBox.user); }
@@ -480,7 +480,9 @@ function goLogin(){
 }
 function showDailyModal(msg){
   const isGuest = isGuestNow();
-  if(isGuest) msg = '游客今天 1 场钓完啦。登录注册解锁每天 4 场 × 30 分钟，渔获奖励会一直保留。';
+  const minutes = Math.max(1, Math.round(Session.DURATION / 60));
+  if(isGuest) msg = `游客今天 ${minutes} 分钟钓完啦。注册免费用户每天 20 分钟，开通会员不限时，渔获奖励会一直保留。`;
+  else if(!(window.DaoBox && DaoBox.timeInfo && DaoBox.timeInfo.unlimited)) msg = `今天 ${minutes} 分钟钓完啦。开通会员不限时，渔获奖励会一直保留。`;
   $('#daily-left').textContent = msg;
   $('#btn-daily-login').classList.toggle('hidden', !isGuest);
   showPopup('#popup-daily');
@@ -488,8 +490,8 @@ function showDailyModal(msg){
 function showGateModal(){ $('#btn-gate-login').classList.toggle('hidden', !isGuestNow()); showPopup('#popup-gate'); }
 
 const DailyLimit = {
-  MAX: 4,
-  key: 'fishing_daily_v1',
+  MAX: 1,
+  key: 'fishing_daily_v2',
   today(){
     const k = new Date().toDateString();
     let d = null;
@@ -1708,10 +1710,11 @@ const FLAVOR = {
   heiyu:'伏击猎手，牙口锋利', guiyu:'桃花流水鳜鱼肥', qingyu:'湖中巨物，钓到能吹一年',
 };
 
-/* ================= 本场计时（30分钟/场 + 暂停） ================= */
+/* ================= 本场计时（身份额度/场 + 暂停） ================= */
 const Session = {
-  DURATION: 30*60,   // 30分钟
-  left: 30*60,       // 剩余秒数
+  DURATION: 10*60,
+  left: 10*60,
+  unlimited: false,
   paused: false,
   ended: false,
   timerId: null,
@@ -1727,7 +1730,7 @@ const Session = {
     const d = DailyLimit.today();
     if(d.used >= DailyLimit.MAX){
       this.ended = true; this.updateUI();
-      showDailyModal('今天 4 场钓完啦，明天再来～渔获奖励会一直保留。');
+      showDailyModal('今天额度用完啦，明天再来～渔获奖励会一直保留。');
       return false;
     }
     hidePopup('#popup-gate');
@@ -1741,7 +1744,7 @@ const Session = {
   _begin(){
     clearInterval(this.timerId);
     this.timerId = setInterval(()=>{
-      if(this.paused || this.ended) return;
+      if(this.paused || this.ended || this.unlimited) return;
       this.left--;
       if(this.left % 5 === 0) this._persist();
       this.updateUI();
@@ -1754,11 +1757,16 @@ const Session = {
     d.active = { left: this.left, paused: this.paused, updated: Date.now() };
     DailyLimit.save(d);
   },
-  /* v0.9.1 身份感知：游客 1场×15分钟，注册用户 4场×30分钟 */
+  /* 身份感知：游客 1场×10分钟，注册免费用户 1场×20分钟，会员不限时 */
   configurePortal(){
     const isUser = !!(window.DaoBox && window.DaoBox.user);
-    this.DURATION = isUser ? 30*60 : 15*60;
-    DailyLimit.MAX = isUser ? 4 : 1;
+    const timeInfo = window.DaoBox && window.DaoBox.timeInfo;
+    this.unlimited = !!(timeInfo && timeInfo.unlimited);
+    const serverLimit = Number(timeInfo && timeInfo.limit);
+    const baseMinutes = isUser ? 20 : 10;
+    this.DURATION = (Number.isFinite(serverLimit) && serverLimit > 0 ? serverLimit : baseMinutes) * 60;
+    this.left = this.DURATION;
+    DailyLimit.MAX = this.unlimited ? Infinity : 1;
     if(PortalFx.isUser()){ PortalFx.refresh().then(()=>PortalFx.importLocal()).then(()=>PortalFx.flushQueue()); }
   },
   /* v0.9.0 页面加载：恢复暂停场 / 3分钟内的刷新续场 / 否则弹出开场门 */
@@ -1769,9 +1777,11 @@ const Session = {
     if(d.active && d.active.paused){
       // 暂停中关掉的：可继续，不另计场
       this.left = d.active.left; this.ended = false; this.paused = true;
-      $('#gate-info').textContent = `上一场暂停中，还剩 ${Math.ceil(this.left/60)} 分钟（不另计场次，今天还能开 ${DailyLimit.leftSessions()} 场新的）`;
+      $('#gate-info').textContent = this.unlimited
+        ? '上一场暂停中，会员不限时，可继续本场'
+        : `上一场暂停中，还剩 ${Math.ceil(this.left/60)} 分钟`;
       $('#btn-gate-resume').classList.remove('hidden');
-      $('#btn-gate-start').textContent = `弃掉上一场，开新场（还剩${DailyLimit.leftSessions()}场）`;
+      $('#btn-gate-start').textContent = this.unlimited ? '弃掉上一场，重新开始' : '弃掉上一场，开新场';
       showGateModal();
       return;
     }
@@ -1784,10 +1794,12 @@ const Session = {
     }
     d.active = null; DailyLimit.save(d);
     if(DailyLimit.reached()){
-      showDailyModal('今天 4 场钓完啦，明天再来～渔获奖励会一直保留。');
+      showDailyModal('今天额度用完啦，明天再来～渔获奖励会一直保留。');
       return;
     }
-    $('#gate-info').textContent = `今日还可钓 ${DailyLimit.leftSessions()} 场 · 每场 ${this.DURATION/60} 分钟`;
+    $('#gate-info').textContent = this.unlimited
+      ? '会员不限时 · 渔获奖励照常累计'
+      : `今日可钓 1 场 · 本场 ${this.DURATION/60} 分钟`;
     $('#btn-gate-resume').classList.add('hidden');
     $('#btn-gate-start').textContent = `🎣 开始本场`;
     showGateModal();
@@ -1799,7 +1811,7 @@ const Session = {
     d.active.paused = false; d.active.updated = Date.now(); DailyLimit.save(d);
     hidePopup('#popup-gate');
     this._begin();
-    toast(`⏵ 继续上一场，剩 ${Math.ceil(this.left/60)} 分钟`);
+    toast(this.unlimited ? '⏵ 继续上一场，会员不限时' : `⏵ 继续上一场，剩 ${Math.ceil(this.left/60)} 分钟`);
   },
   discardSaved(){  // 门弹窗：弃掉暂停场开新场
     const d = DailyLimit.today(); d.active = null; DailyLimit.save(d);
@@ -1884,8 +1896,10 @@ const Session = {
   },
   updateUI(){
     const el = $('#session-timer');
-    el.textContent = this.format();
-    el.classList.toggle('warning', this.left <= 300 && this.left > 0);
+    el.textContent = this.unlimited ? '会员不限时' : this.format();
+    el.classList.toggle('warning', !this.unlimited && this.left <= 300 && this.left > 0);
+    const newBtn = $('#btn-new-session');
+    if(newBtn) newBtn.textContent = this.unlimited ? '🎣 再钓一场（会员不限时）' : `🎣 再钓一场（${this.DURATION/60}分钟）`;
   },
   endSession(){
     if(this.ended) return;
@@ -1917,11 +1931,11 @@ const Session = {
     hidePopup('#popup-session');
     if(DailyLimit.reached()){
       this.ended = true; this.updateUI();
-      showDailyModal('今天 4 场钓完啦，明天再来～渔获奖励会一直保留。');
+      showDailyModal('今天额度用完啦，明天再来～渔获奖励会一直保留。');
       return;
     }
     this.start();
-    toast(`🎣 新一场开始，限时30分钟（今天还剩 ${DailyLimit.leftSessions()} 场）`);
+    toast(this.unlimited ? '🎣 新一场开始，会员不限时' : `🎣 新一场开始，限时${this.DURATION/60}分钟`);
   }
 };
 
@@ -1981,16 +1995,21 @@ const Game = {
     });
     $('#btn-quit-cancel').addEventListener('click', ()=>hidePopup('#popup-quit-confirm'));
     const openQuitConfirm = () => {
-      $('#quit-confirm-info').textContent = `本场会作废。今天还能开 ${DailyLimit.leftSessions()} 场新的。`;
+      $('#quit-confirm-info').textContent = Session.unlimited
+        ? '本场会作废。会员不限时，之后仍可继续钓。'
+        : '本场会作废，今天额度不再返还。';
       showPopup('#popup-quit-confirm');
     };
     $('#btn-quit-today').addEventListener('click', openQuitConfirm);
     $('#btn-quit-from-session').addEventListener('click', openQuitConfirm);
     $('#btn-quit-back').addEventListener('click', ()=>{
       hidePopup('#popup-quit');
-      if(DailyLimit.leftSessions() > 0){ Session.start(); toast(`🎣 新一场开始，今天还剩 ${DailyLimit.leftSessions()} 场`); }
+      if(Session.unlimited || DailyLimit.leftSessions() > 0){
+        Session.start();
+        toast(Session.unlimited ? '🎣 新一场开始，会员不限时' : '🎣 新一场开始');
+      }
       else {
-        showDailyModal('今天 4 场钓完啦，明天再来～渔获奖励会一直保留。');
+        showDailyModal('今天额度用完啦，明天再来～渔获奖励会一直保留。');
       }
     });
     $('#btn-quit-close').addEventListener('click', ()=>{
