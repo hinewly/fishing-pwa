@@ -13,4 +13,4 @@ cd fishing-pwa/public && python3 -m http.server 8801
 ## 文档
 
 - 设计与决策：`docs/ideas/2026-10-28-新增子程序-钓鱼游戏.md`（工作区级）
-- 交接：`docs/handoff/fishing-initial-build.md`
+- 交接：`docs/handoff/钓鱼-湖畔-首版构建-交接.md`
