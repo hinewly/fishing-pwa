@@ -2,6 +2,7 @@
  * 状态机：lake(选位/抛竿/等口/刺鱼) → fight(张力博弈) → net(抄网) → 结算
  */
 'use strict';
+let applyingFishingSync = false;
 
 /* ================= 音效（WebAudio 合成，零素材） ================= */
 const AudioSys = (() => {
@@ -261,6 +262,9 @@ const AmbientMusic = (() => {
     setTrack(idx){
       trackIdx = idx % TRACKS.length;
       localStorage.setItem('fishing_music_track', String(trackIdx));
+      if(!applyingFishingSync){
+        try{ window.dispatchEvent(new CustomEvent('fishing:settingchange',{detail:{track:trackIdx}})); }catch(e){}
+      }
       if(playing){ // 切曲时重新开始
         if(loopTimer){ clearTimeout(loopTimer); loopTimer=null; }
         scheduleLoop();
@@ -289,10 +293,29 @@ function showPopup(id){ $(id).classList.remove('hidden'); }
 function hidePopup(id){ $(id).classList.add('hidden'); }
 
 /* ================= 渔获存档 ================= */
+let catchCache = null;
+let fishingSync = null;
+let settingsUpdatedAt = 0;
+const LOCAL_RECORD_LIMIT = 2000;
+const CLOUD_RECORD_LIMIT = 200;
+
 const Store = {
   key:'fishing_catch_v1',
-  load(){ try{ return JSON.parse(localStorage.getItem(this.key)) || {counts:{},firsts:[]}; }catch(e){ return {counts:{},firsts:[]}; } },
-  save(d){ localStorage.setItem(this.key, JSON.stringify(d)); },
+  load(){
+    if(catchCache) return JSON.parse(JSON.stringify(catchCache));
+    try{ return JSON.parse(localStorage.getItem(this.key)) || {counts:{},firsts:[]}; }catch(e){ return {counts:{},firsts:[]}; }
+  },
+  save(d){
+    d = d || {counts:{},firsts:[]};
+    d.counts = d.counts || {};
+    d.firsts = Array.from(new Set(d.firsts || []));
+    d.records = Array.isArray(d.records) ? d.records.slice(-LOCAL_RECORD_LIMIT) : [];
+    catchCache = JSON.parse(JSON.stringify(d));
+    if(fishingSync) fishingSync.save(collectFishingState());
+    else {
+      try{ localStorage.setItem(this.key, JSON.stringify(d)); }catch(e){}
+    }
+  },
   add(fish){
     const d = this.load();
     const isNew = !d.counts[fish.species.id];
@@ -305,9 +328,112 @@ const Store = {
   },
 };
 
+function maxWeightsFrom(records){
+  const out={};
+  (records||[]).forEach(r=>{
+    const id=r&&r.s, w=Number(r&&r.w);
+    if(id&&w>0&&(!(out[id]>0)||w>out[id])) out[id]=w;
+  });
+  return out;
+}
+function collectFishingState(){
+  const d=Store.load();
+  const maxWeights=Object.assign({},maxWeightsFrom(d.records),d.maxWeights||{});
+  return {
+    collection:{
+      counts:d.counts||{},
+      firsts:Array.from(new Set(d.firsts||[])),
+      maxWeights:maxWeights,
+      records:(d.records||[]).slice(-CLOUD_RECORD_LIMIT)
+    },
+    settings:{musicTrack:AmbientMusic.trackIndex,updatedAt:settingsUpdatedAt}
+  };
+}
+function readLegacyFishingState(){
+  let catches=null, track=0;
+  try{ catches=JSON.parse(localStorage.getItem(Store.key)); }catch(e){}
+  try{ track=parseInt(localStorage.getItem('fishing_music_track'),10)||0; }catch(e){}
+  if(!catches&&!track) return null;
+  catches=catches||{counts:{},firsts:[],records:[]};
+  return {
+    collection:{
+      counts:catches.counts||{},
+      firsts:catches.firsts||[],
+      maxWeights:maxWeightsFrom(catches.records),
+      records:(catches.records||[]).slice(-CLOUD_RECORD_LIMIT)
+    },
+    settings:{musicTrack:track,updatedAt:0}
+  };
+}
+function mergeFishingState(local,remote){
+  local=local||{}; remote=remote||{};
+  const lc=local.collection||{}, rc=remote.collection||{};
+  const counts={};
+  Object.keys(lc.counts||{}).concat(Object.keys(rc.counts||{})).forEach(id=>{
+    if(!(id in counts)) counts[id]=Math.max(Number(lc.counts&&lc.counts[id])||0,Number(rc.counts&&rc.counts[id])||0);
+  });
+  const byId={};
+  [...(lc.records||[]),...(rc.records||[])].forEach(r=>{
+    if(!r||!r.s||!(Number(r.w)>0)) return;
+    const id=`${r.s}|${r.w}|${r.t||0}`;
+    if(!byId[id]) byId[id]=r;
+  });
+  const records=Object.values(byId).sort((a,b)=>(Number(a.t)||0)-(Number(b.t)||0)).slice(-CLOUD_RECORD_LIMIT);
+  const maxWeights=Object.assign({},lc.maxWeights||{},rc.maxWeights||{},maxWeightsFrom(records));
+  Object.keys(maxWeights).forEach(id=>{ maxWeights[id]=Math.max(Number(lc.maxWeights&&lc.maxWeights[id])||0,Number(rc.maxWeights&&rc.maxWeights[id])||0,Number(maxWeights[id])||0); });
+  const ls=local.settings||{}, rs=remote.settings||{};
+  const s=(Number(rs.updatedAt)||0)>(Number(ls.updatedAt)||0)?rs:ls;
+  return {
+    collection:{
+      counts:counts,
+      firsts:Array.from(new Set([...(lc.firsts||[]),...(rc.firsts||[])])),
+      maxWeights:maxWeights,
+      records:records
+    },
+    settings:{musicTrack:Math.max(0,Number(s.musicTrack)||0),updatedAt:Number(s.updatedAt)||0}
+  };
+}
+function applyFishingState(d){
+  d=d||{};
+  const c=d.collection||{}, s=d.settings||{};
+  catchCache={
+    counts:c.counts||{},
+    firsts:Array.from(new Set(c.firsts||[])),
+    maxWeights:c.maxWeights||{},
+    records:Array.isArray(c.records)?c.records.slice(-LOCAL_RECORD_LIMIT):[]
+  };
+  settingsUpdatedAt=Number(s.updatedAt)||0;
+  applyingFishingSync=true;
+  try{ AmbientMusic.setTrack(Number(s.musicTrack)||0); }catch(e){}
+  applyingFishingSync=false;
+}
+function initFishingSync(){
+  if(fishingSync||!window.DaoBoxCloud) return;
+  fishingSync=window.DaoBoxCloud.create({
+    app:'fishing',schemaVersion:1,
+    readLegacy:readLegacyFishingState,
+    collect:collectFishingState,
+    apply:applyFishingState,
+    merge:mergeFishingState,
+    isEmpty:d=>!d||(!Object.keys(d.collection&&d.collection.counts||{}).length&&!(Number(d.settings&&d.settings.updatedAt)>0)),
+    compact:d=>{
+      d.collection=d.collection||{};
+      d.collection.records=Array.isArray(d.collection.records)?d.collection.records.slice(-CLOUD_RECORD_LIMIT):[];
+      return d;
+    }
+  });
+  const local=fishingSync.read();
+  if(local) applyFishingState(local);
+  fishingSync.start();
+}
+window.addEventListener('fishing:settingchange',function(){
+  settingsUpdatedAt=Date.now();
+  if(fishingSync) fishingSync.save(collectFishingState());
+});
+
 
 /* ================= 版本 ================= */
-const APP_VERSION = 'v1.0.18';
+const APP_VERSION = 'v1.0.19';
 
 /* ================= 奖励系统（v0.8.0 用户拍板）
  * 100斤 = 1天注册时长 + 10积分，按充值周期内累计斤数四舍五入到百斤

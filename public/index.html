@@ -296,7 +296,9 @@
 <script src="fish-art.js"></script>
 <script src="game.js"></script>
   <script>window.DB_HOME = location.hostname.indexOf('daobox.net.cn') !== -1 ? 'https://daobox.net.cn' : 'https://daobox.app';</script>
-  <script>document.write('<script src="' + window.DB_HOME + '/portal.js" data-app="fishing"><\/script>');</script>
+  <script>document.write('<script src="' + window.DB_HOME + '/portal.js?v=20261127" data-app="fishing"><\/script>');</script>
+  <script>document.write('<script src="' + window.DB_HOME + '/cloud-sync.js?v=1.0.0"><\/script>');</script>
+  <script>initFishingSync();</script>
   <script>
     // fix v0.9.8: 底部"登录 / 注册"跳统一登录页
     // v1.0.4: 改事件委托+点击时实时取 URL——不再依赖 DaoBox 加载时序，DaoBox 未就绪时走兜底 URL
